@@ -1,0 +1,8 @@
+.env
+logs/*.out
+logs/*.err
+wandb
+
+# vim
+**.un~
+**.swp
