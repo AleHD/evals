@@ -3,6 +3,7 @@ import statistics
 import functools
 import re
 import json
+import os
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -50,6 +51,16 @@ def get_log(infos: List[dict], tasks_cfg: dict) -> Dict[str, float]:
     return wandb_log
 
 
+def get_history(name: str) -> Dict[int, Dict[str, float]]:
+    api = wandb.Api()
+    run = api.run(f"{api.default_entity}/{os.environ['WANDB_PROJECT']}/{name}")
+    history = collections.defaultdict(dict)
+    for row in run.scan_history():
+        row = {key: value for key, value in row.items() if not key.startswith("_")}
+        history[row["ConsumedTokens"]] = row
+    return history
+
+
 def main(logs_root: Path, name: Optional[str], it: Optional[int],
          tasks: Path):
 
@@ -59,10 +70,10 @@ def main(logs_root: Path, name: Optional[str], it: Optional[int],
     # Grab each possible log and update wandb run.
     for p1 in filter(lambda p: name is None or name == p.name, logs_root.iterdir()):
         print("Updating path", p1)
+        history = get_history(p1.name)
         with wandb.init(id=p1.name, name=p1.name) as run:
             run.define_metric("ConsumedTokens")
             run.define_metric("*", step_metric="ConsumedTokens")
-
             for p2 in p1.iterdir():
                 current_it = int(re.match("^iter_([0-9]+)$", p2.name).group(1))
                 if it is not None and it != current_it:
@@ -78,9 +89,17 @@ def main(logs_root: Path, name: Optional[str], it: Optional[int],
                 if len(results) > 0:
                     log = get_log(results, tasks_cfg)
                     log.update({"ConsumedTokens": consumed_tokens, "OptStep": current_it})
-                    run.log(log)
                     sublog = {k: v for k, v in log.items() if "macro/acc" in k}
-                    print("Logged sucessful:", sublog)
+                    if consumed_tokens in history:
+                        if log == history[consumed_tokens]:
+                            print("Exact log already matches wandb! Ignoring entry to avoid pushing duplicates")
+                        else:
+                            print("Important! wandb log at current iteration already found, but differs. Updating")
+                            run.log(log)
+                            print("Logged sucessful:", sublog)
+                    else:
+                        run.log(log)
+                        print("Logged sucessful:", sublog)
                 else:
                     print("No logs found!")
                 print()
