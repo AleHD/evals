@@ -53,7 +53,7 @@ IT=$2
 TOKENS_PER_ITER=$3
 NAME=$4
 BS=${BS:-"auto:20"}
-MEGATRON_BRANCH=${MEGATRON_BRANCH:-xielu-backwards-compatibility}
+MEGATRON_BRANCH=${MEGATRON_BRANCH:-main}
 SIZE=${SIZE:-1}
 BOD=${BOD:-false}
 LOGS_ROOT=${LOGS_ROOT:-$SCRATCH/eval-logs}
@@ -65,7 +65,7 @@ GPUS_PER_NODE=4
 
 # Print configuration.
 echo "Configuration set:"
-printf "MODEL=$MODEL\nIT=$IT\nTOKENS_PER_ITER=$TOKENS_PER_ITER\nNAME=$NAME\nTOKENIZER=$TOKENIZER\nBS=$BS\nREVISION=$REVISION\nMEGATRON_BRANCH=$MEGATRON_BRANCH\nSIZE=$SIZE\nLIMIT=$LIMIT\nBOD=$BOD\nTASKS=$TASKS\n\nTRANSFORMERS_BRANCH=$TRANSFORMERS_BRANCH\nHARNESS_BRANCH=$HARNESS_BRANCH\nHF_HOME=$HF_HOME\n\n"
+printf "MODEL=$MODEL\nIT=$IT\nTOKENS_PER_ITER=$TOKENS_PER_ITER\nNAME=$NAME\nTOKENIZER=$TOKENIZER\nBS=$BS\nREVISION=$REVISION\nMEGATRON_BRANCH=$MEGATRON_BRANCH\nSIZE=$SIZE\nLIMIT=$LIMIT\nBOD=$BOD\nLOGS_ROOT=$LOGS_ROOT\nTASKS=$TASKS\n\nTRANSFORMERS_BRANCH=$TRANSFORMERS_BRANCH\nHARNESS_BRANCH=$HARNESS_BRANCH\nHF_HOME=$HF_HOME\n\n"
 
 # Generic envs.
 export MASTER_ADDR=$(hostname)
@@ -138,10 +138,8 @@ if [ -z ${HF_TEMP_DIR+x} ]; then
 	HF_TEMP_PATH=$(mktemp -d -p $TEMP_PATH_ROOT)       # To store hf conversion (if needed).
 else
 	echo "Using HF_TEMP_DIR=${HF_TEMP_DIR}"
-	HF_TEMP_PATH=$HF_TEMP_DIR/hf_checkpoints/$SLURM_JOB_NAME
-	rm -rf $HF_TEMP_PATH
+	HF_TEMP_PATH=$HF_TEMP_DIR/$SLURM_JOB_NAME
 	mkdir -p $HF_TEMP_PATH
-	chmod -R 755 $HF_TEMP_PATH
 fi
 TORCH_NODIST_PATH=$(mktemp -d -p $TEMP_PATH_ROOT)  # To store torch no dist checkpoint converted (if needed).
 TEMP_REPOS=$(mktemp -d -p $TEMP_PATH_ROOT)
@@ -160,6 +158,7 @@ HARNESS_DIR=$RUN_ROOT/harness
 export WANDB_DIR=$RUN_ROOT
 mkdir -p $HARNESS_DIR
 echo $CONSUMED_TOKENS > $RUN_ROOT/consumed_tokens.txt
+echo $SLURM_JOB_ID >> $RUN_ROOT/job_ids.txt
 
 # Install custom transformers and lm-harness.
 echo Installing transformers and eval harness.
@@ -209,6 +208,7 @@ else
 	HF_CHECKPOINT_PATH=$MODEL
 	huggingface-cli download $MODEL $MAYBE_DOWNLOAD_REVISION
 	if [ $TOKENIZER != $MODEL ]; then
+		echo "Why are you using a different tokenizer and model? TOKENIZER=$TOKENIZER, MODEL=$MODEL"
 		huggingface-cli download $TOKENIZER
 	fi
 fi
