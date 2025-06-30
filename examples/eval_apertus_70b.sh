@@ -1,5 +1,5 @@
 export TOKENIZER=alehc/swissai-tokenizer
-export BOD=true
+export BOS=true
 export SIZE=70
 
 MODEL=Apertus-${SIZE}B

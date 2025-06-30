@@ -1,5 +1,5 @@
 export TOKENIZER=alehc/swissai-tokenizer
-export BOD=true
+export BOS=true
 
 MODEL=Apertus-8B
 TOK_PER_IT=$(( 4096*1024 ))

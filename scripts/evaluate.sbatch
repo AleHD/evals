@@ -28,7 +28,7 @@ usage() {
 	echo " SIZE: The (approximate) size of the model in billions of parameters. Used to set model parallelism (needs to be set in larger models)."
 	echo " LIMIT: The --limit argument to pass to lm-evaluation-harness."
 	echo " HF_TEMP_DIR: If set the converted megatron checkpoints will be saved here, otherwise they will not be saved anywhere."
-	echo " BOD: Set this to 'true' if you wish to prepend the BOD token when evaluating models."
+	echo " BOS: Set this to 'true' if you wish to prepend the BOS token when evaluating models."
 	echo " LOGS_ROOT: Where are your evaluation wandb&harness logs going to."
 	echo " TASKS: Tasks to run with lm eval harness."
 	echo "For more information see the README: https://github.com/swiss-ai/evals?tab=readme-ov-file."
@@ -55,7 +55,7 @@ NAME=$4
 BS=${BS:-"auto:20"}
 MEGATRON_BRANCH=${MEGATRON_BRANCH:-main}
 SIZE=${SIZE:-1}
-BOD=${BOD:-false}
+BOS=${BOS:-false}
 LOGS_ROOT=${LOGS_ROOT:-$SCRATCH/eval-logs}
 TASKS=${TASKS:-swissai_eval}
 TRANSFORMERS_BRANCH=${TRANSFORMERS_BRANCH:-main}
@@ -65,7 +65,7 @@ GPUS_PER_NODE=4
 
 # Print configuration.
 echo "Configuration set:"
-printf "MODEL=$MODEL\nIT=$IT\nTOKENS_PER_ITER=$TOKENS_PER_ITER\nNAME=$NAME\nTOKENIZER=$TOKENIZER\nBS=$BS\nREVISION=$REVISION\nMEGATRON_BRANCH=$MEGATRON_BRANCH\nSIZE=$SIZE\nLIMIT=$LIMIT\nBOD=$BOD\nLOGS_ROOT=$LOGS_ROOT\nTASKS=$TASKS\n\nTRANSFORMERS_BRANCH=$TRANSFORMERS_BRANCH\nHARNESS_BRANCH=$HARNESS_BRANCH\nHF_HOME=$HF_HOME\n\n"
+printf "MODEL=$MODEL\nIT=$IT\nTOKENS_PER_ITER=$TOKENS_PER_ITER\nNAME=$NAME\nTOKENIZER=$TOKENIZER\nBS=$BS\nREVISION=$REVISION\nMEGATRON_BRANCH=$MEGATRON_BRANCH\nSIZE=$SIZE\nLIMIT=$LIMIT\nBOS=$BOS\nLOGS_ROOT=$LOGS_ROOT\nTASKS=$TASKS\n\nTRANSFORMERS_BRANCH=$TRANSFORMERS_BRANCH\nHARNESS_BRANCH=$HARNESS_BRANCH\nHF_HOME=$HF_HOME\n\n"
 
 # Generic envs.
 export MASTER_ADDR=$(hostname)
@@ -221,7 +221,7 @@ export HF_HUB_OFFLINE=1
 # Finally, run the actual evaluations.
 DP=$(( GPUS_PER_NODE / MP ))
 COMMON_MODEL_ARGS="pretrained=$HF_CHECKPOINT_PATH,tokenizer=$TOKENIZER,max_length=4096$MAYBE_REVISION,attn_implementation=flash_attention_2,dtype=bfloat16"
-if [[ $BOD = true ]]; then
+if [[ $BOS = true ]]; then
 	echo "Adding BOS token."
 	COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,add_bos_token=True"
 fi

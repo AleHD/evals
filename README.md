@@ -49,7 +49,7 @@ In addition of the four needed positional arguments, you can specify the followi
 - `SIZE`: The (approximate) size of the model in billions of parameters.
    Used to set model parallelism (needs to be set in larger models, otherwise you will run out of CUDA memory when evaluating).
 - `LIMIT`: The --limit argument to pass to lm-evaluation-harness.
-- `BOD`: Set this to `true` if you wish to prepend the BOD token when evaluating models.
+- `BOS`: Set this to `true` if you wish to prepend the BOS token when evaluating models.
 - `TASKS`: Tasks to run with lm eval harness.
 
 ## Customizing `update_wandb.py`
@@ -87,7 +87,7 @@ TOK_PER_IT=8388608:523519,16777216:  # The Apertus70B model doubled GBS around i
 IT=750000
 PATH=/capstor/scratch/cscs/asolergi/main_run_70B_megatron/Megatron-LM/logs/Meg-Runs/main-runs-v1/apertus3-70b-512-nodes-1e-5lr/checkpoints-512-noOverlap/
 
-export BOD=true  # Needed to correctly evaluate Apertus models.
+export BOS=true  # Needed to correctly evaluate Apertus models.
 export SIZE=70  # Needed to set model parallelism internally, otherwise you will run out of CUDA memory.
 export LOGS_ROOT=$SCRATCH/eval-logs  # Set explicitly as an example, this is the default value in the script.
 

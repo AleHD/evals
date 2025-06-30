@@ -90,7 +90,7 @@ def submit(name: str, model: dict, it: int, tasks: list[str]):
     env = {**os.environ,
            "LOGS_ROOT": CFG["logs_root"],
            "TOKENIZER": "alehc/swissai-tokenizer",
-           "BOD": "true",
+           "BOS": "true",
            "SIZE": str(model["size"]),
            "HF_TEMP_DIR": CFG["hf_temp_dir"],
            "TASKS": tasks}
