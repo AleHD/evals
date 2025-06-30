@@ -206,7 +206,11 @@ if [ $IS_MEGATRON = true ]; then
 	huggingface-cli download $TOKENIZER
 else
 	HF_CHECKPOINT_PATH=$MODEL
-	huggingface-cli download $MODEL $MAYBE_DOWNLOAD_REVISION
+	if [[ -d $MODEL ]]; then
+		echo "$MODEL is a local directory, skipping download."
+	else
+		huggingface-cli download $MODEL $MAYBE_DOWNLOAD_REVISION
+	fi
 	if [ $TOKENIZER != $MODEL ]; then
 		echo "Why are you using a different tokenizer and model? TOKENIZER=$TOKENIZER, MODEL=$MODEL"
 		huggingface-cli download $TOKENIZER
