@@ -119,3 +119,6 @@ Examples:
 - A 70B model should reliably finish when splitting into two: `english`, `multilingual` with heuristic scores of `80` and `94.5`, respectively.
 
 More information on the task hierarchy refer to https://github.com/swiss-ai/lm-evaluation-harness/tree/main/lm_eval/tasks/swissai_eval.
+
+## About `evaluate_hf.sbatch`
+This file is here to keep things self contained, it will work great with the `Dockerfile` and `env.toml ` specified in the `containers` folder, only for huggingface models though. Use this to ensure stable HF evals/if the other `evaluate.sbatch` fails.
