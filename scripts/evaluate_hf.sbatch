@@ -52,7 +52,7 @@ SIZE=${SIZE:-1}
 BOD=${BOD:-false}
 LOGS_ROOT=${LOGS_ROOT:-$SCRATCH/eval-logs}
 TASKS=${TASKS:-swissai_eval}
-export HF_HOME=${HF_HOME:-/capstor/store/cscs/swissai/a06/hf_home}
+export HF_HOME=${HF_HOME:-/capstor/store/cscs/swissai/infra01/hf_home/}
 GPUS_PER_NODE=4
 
 # Print configuration.

@@ -60,7 +60,7 @@ LOGS_ROOT=${LOGS_ROOT:-$SCRATCH/eval-logs}
 TASKS=${TASKS:-swissai_eval}
 TRANSFORMERS_BRANCH=${TRANSFORMERS_BRANCH:-main}
 HARNESS_BRANCH=${HARNESS_BRANCH:-granular_eval}
-export HF_HOME=${HF_HOME:-/capstor/store/cscs/swissai/a06/hf_home}
+export HF_HOME=${HF_HOME:-/capstor/store/cscs/swissai/infra01/hf_home/}
 GPUS_PER_NODE=4
 
 # Print configuration.
