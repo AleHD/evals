@@ -19,13 +19,11 @@ import shutil
 from pathlib import Path
 
 
-ROOT_EVAL = "swissai_eval"
-
 
 def unify(completed: list[str]) -> list[str]:
     completed_set = set(completed)
     unified = []
-    for groupname, tasks in filter(lambda t: t[0] != ROOT_EVAL, TASKS.items()):
+    for groupname, tasks in filter(lambda t: t[0] != ROOT_EVAL, TASKS["groups"].items()):
         if set(tasks) <= completed_set:
             unified.append(groupname)
     return unified
@@ -173,5 +171,6 @@ if __name__ == "__main__":
         CFG = json.load(f)
     with open("configs/tasks.json") as f:
         TASKS = json.load(f)
-    ALL_EVALS = sorted([task for task in TASKS if task != ROOT_EVAL])
+    ROOT_EVAL = TASKS["root"]
+    ALL_EVALS = sorted([task for task in TASKS["groups"] if task != ROOT_EVAL])
     main()
