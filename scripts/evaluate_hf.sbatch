@@ -10,6 +10,7 @@
 #SBATCH --error=logs/%x_%j.err
 #SBATCH --exclusive
 #SBATCH --partition=normal
+#SBATCH --time=11:59:00
 
 # Aux functions.
 usage() {
@@ -81,15 +82,12 @@ echo "Consumed tokens for this iteration: $CONSUMED_TOKENS"
 # Determine model parallel based on size.
 if (( SIZE <= 35 )); then
 	MP=1
-	CONVERT_MP=1
 elif (( SIZE <= 70 )); then
 	MP=2
-	CONVERT_MP=4
 else
 	MP=4
-	CONVERT_MP=4
 fi
-echo "Using model size ~${SIZE}B, model parallel size of $MP, conversion parallel size of $CONVERT_MP"
+echo "Using model size ~${SIZE}B, model parallel size of $MP"
 
 # Prepare logs root.
 RUN_ROOT=$LOGS_ROOT/$NAME/iter_$IT
@@ -103,11 +101,16 @@ export HF_HUB_OFFLINE=1
 # Finally, run the actual evaluations.
 HF_CHECKPOINT_PATH=$MODEL
 DP=$(( GPUS_PER_NODE / MP ))
-COMMON_MODEL_ARGS="pretrained=$HF_CHECKPOINT_PATH,tokenizer=$TOKENIZER,max_length=4096$MAYBE_REVISION,attn_implementation=flash_attention_2,dtype=bfloat16"
+COMMON_MODEL_ARGS="pretrained=$HF_CHECKPOINT_PATH,tokenizer_path=$TOKENIZER,context_length=4096$MAYBE_REVISION,dtype=bfloat16"
 if [[ $BOD = true ]]; then
 	echo "Adding BOS token."
 	COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,add_bos_token=True"
 fi
+
+# Add SGLang specific arguments.
+SGLANG_MEMORY_FRACTION=0.65
+COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,dp_size=$DP,tp_size=$MP,mem_fraction_static=$SGLANG_MEMORY_FRACTION"
+
 COMMON_EVAL_ARGS=(
 	--trust_remote_code
 	--batch_size $BS
@@ -115,21 +118,16 @@ COMMON_EVAL_ARGS=(
 	--output $HARNESS_DIR/eval_$SLURM_JOBID
 	--max_batch_size 128
 	--cache_requests true
-	--model hf
+	--model sglang
 	--log_samples
 	--write_out
 	$LIMIT_ARGS
 )
-if [[ $DP -eq 1 ]]; then  # Only use model parallel.
-	export WORLD_SIZE=1
-	CMD="lm_eval --model_args=$COMMON_MODEL_ARGS,parallelize=True ${COMMON_EVAL_ARGS[@]}"
-elif (( MP > 1 )); then  # Use data parallel and model parallel.
-	CMD="accelerate launch --multi_gpu --num_processes $DP -m lm_eval --model_args=$COMMON_MODEL_ARGS,parallelize=True ${COMMON_EVAL_ARGS[@]}"
-else  # Only use data parallel.
-	CMD="accelerate launch -m lm_eval --model_args=$COMMON_MODEL_ARGS ${COMMON_EVAL_ARGS[@]}"
-fi
+
+CMD="lm_eval --model_args=$COMMON_MODEL_ARGS ${COMMON_EVAL_ARGS[@]}"
+
 echo "Final command: $CMD"
-srun -ul --environment=./env.toml bash -c " \
+srun -ul --environment=./containers/env.toml bash -c " \
     $CMD
 "
 

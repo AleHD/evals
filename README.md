@@ -121,4 +121,4 @@ Examples:
 More information on the task hierarchy refer to https://github.com/swiss-ai/lm-evaluation-harness/tree/main/lm_eval/tasks/swissai_eval.
 
 ## About `evaluate_hf.sbatch`
-This file is here to keep things self contained, it will work great with the `Dockerfile` and `env.toml ` specified in the `containers` folder, only for huggingface models though. Use this to ensure stable HF evals/if the other `evaluate.sbatch` fails.
+This file is here to keep things self contained, it will work great with the `Dockerfile` and `env.toml ` specified in the `containers` folder, only for huggingface models though. Use this to ensure stable HF evals if the other `evaluate.sbatch` fails.
