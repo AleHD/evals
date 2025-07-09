@@ -1,0 +1,334 @@
+{
+  "Albanian": [
+    "include_base_44_albanian"
+  ],
+  "Amharic": [
+    "global_mmlu_full_am"
+  ],
+  "Arabic": [
+    "arc_ar",
+    "global_mmlu_full_ar",
+    "hellaswag_ar",
+    "include_base_44_arabic",
+    "xnli_ar"
+  ],
+  "Armenian": [
+    "arc_hy",
+    "hellaswag_hy",
+    "include_base_44_armenian"
+  ],
+  "Azerbaijani": [
+    "include_base_44_azerbaijani"
+  ],
+  "Basque": [
+    "arc_eu",
+    "hellaswag_eu",
+    "include_base_44_basque"
+  ],
+  "Belarusian": [
+    "include_base_44_belarusian"
+  ],
+  "Bengali": [
+    "arc_bn",
+    "global_mmlu_full_bn",
+    "hellaswag_bn",
+    "include_base_44_bengali"
+  ],
+  "Bulgarian": [
+    "include_base_44_bulgarian",
+    "xnli_bg"
+  ],
+  "Catalan": [
+    "arc_ca",
+    "hellaswag_ca"
+  ],
+  "Chichewa": [
+    "global_mmlu_full_ny"
+  ],
+  "Chinese": [
+    "arc_zh",
+    "global_mmlu_full_zh",
+    "include_base_44_chinese",
+    "paws_zh",
+    "xcopa_zh",
+    "xnli_zh",
+    "xwinograd_zh"
+  ],
+  "Croatian": [
+    "arc_hr",
+    "hellaswag_hr",
+    "include_base_44_croatian"
+  ],
+  "Czech": [
+    "global_mmlu_full_cs"
+  ],
+  "Danish": [
+    "arc_da",
+    "hellaswag_da"
+  ],
+  "Dutch": [
+    "arc_nl",
+    "global_mmlu_full_nl",
+    "hellaswag_nl",
+    "include_base_44_dutch"
+  ],
+  "English": [
+    "global_mmlu_full_en",
+    "paws_en",
+    "switzerland_qa_en",
+    "xnli_en",
+    "xwinograd_en"
+  ],
+  "Estonian": [
+    "include_base_44_estonian",
+    "xcopa_et"
+  ],
+  "Finnish": [
+    "include_base_44_finnish"
+  ],
+  "French": [
+    "arc_fr",
+    "global_mmlu_full_fr",
+    "hellaswag_fr",
+    "include_base_44_french",
+    "paws_fr",
+    "switzerland_qa_fr",
+    "xnli_fr",
+    "xwinograd_fr"
+  ],
+  "Georgian": [
+    "include_base_44_georgian"
+  ],
+  "German": [
+    "arc_de",
+    "global_mmlu_full_de",
+    "hellaswag_de",
+    "include_base_44_german",
+    "paws_de",
+    "switzerland_qa_de",
+    "xnli_de"
+  ],
+  "Greek": [
+    "global_mmlu_full_el",
+    "include_base_44_greek",
+    "xnli_el"
+  ],
+  "Gujarati": [
+    "arc_gu",
+    "hellaswag_gu"
+  ],
+  "Haitian Creole": [
+    "xcopa_ht"
+  ],
+  "Hausa": [
+    "global_mmlu_full_ha"
+  ],
+  "Hebrew": [
+    "global_mmlu_full_he",
+    "include_base_44_hebrew"
+  ],
+  "Hindi": [
+    "arc_hi",
+    "global_mmlu_full_hi",
+    "hellaswag_hi",
+    "include_base_44_hindi",
+    "xnli_hi"
+  ],
+  "Hungarian": [
+    "arc_hu",
+    "hellaswag_hu",
+    "include_base_44_hungarian"
+  ],
+  "Igbo": [
+    "global_mmlu_full_ig"
+  ],
+  "Indonesian": [
+    "arc_id",
+    "global_mmlu_full_id",
+    "hellaswag_id",
+    "include_base_44_indonesian",
+    "xcopa_id"
+  ],
+  "Italian": [
+    "arc_it",
+    "global_mmlu_full_it",
+    "hellaswag_it",
+    "include_base_44_italian",
+    "switzerland_qa_it",
+    "xcopa_it"
+  ],
+  "Japanese": [
+    "global_mmlu_full_ja",
+    "include_base_44_japanese",
+    "paws_ja",
+    "xwinograd_jp"
+  ],
+  "Kannada": [
+    "arc_kn",
+    "hellaswag_kn"
+  ],
+  "Kazakh": [
+    "include_base_44_kazakh"
+  ],
+  "Korean": [
+    "global_mmlu_full_ko",
+    "include_base_44_korean",
+    "paws_ko"
+  ],
+  "Kyrgyz": [
+    "global_mmlu_full_ky"
+  ],
+  "Lithuanian": [
+    "global_mmlu_full_lt",
+    "include_base_44_lithuanian"
+  ],
+  "Malagasy": [
+    "global_mmlu_full_mg"
+  ],
+  "Malay": [
+    "global_mmlu_full_ms",
+    "include_base_44_malay"
+  ],
+  "Malayalam": [
+    "arc_ml",
+    "hellaswag_ml",
+    "include_base_44_malayalam"
+  ],
+  "Marathi": [
+    "arc_mr",
+    "hellaswag_mr"
+  ],
+  "Nepali": [
+    "arc_ne",
+    "global_mmlu_full_ne",
+    "hellaswag_ne",
+    "include_base_44_nepali"
+  ],
+  "North macedonian": [
+    "include_base_44_north macedonian"
+  ],
+  "Persian": [
+    "global_mmlu_full_fa",
+    "include_base_44_persian"
+  ],
+  "Polish": [
+    "global_mmlu_full_pl",
+    "include_base_44_polish"
+  ],
+  "Portuguese": [
+    "arc_pt",
+    "global_mmlu_full_pt",
+    "hellaswag_pt",
+    "include_base_44_portuguese",
+    "xwinograd_pt"
+  ],
+  "Quechua": [
+    "xcopa_qu"
+  ],
+  "Romanian": [
+    "arc_ro",
+    "global_mmlu_full_ro",
+    "hellaswag_ro"
+  ],
+  "Romansh": [
+    "switzerland_qa_rm"
+  ],
+  "Russian": [
+    "arc_ru",
+    "global_mmlu_full_ru",
+    "hellaswag_ru",
+    "include_base_44_russian",
+    "xnli_ru",
+    "xwinograd_ru"
+  ],
+  "Serbian": [
+    "arc_sr",
+    "global_mmlu_full_sr",
+    "hellaswag_sr",
+    "include_base_44_serbian"
+  ],
+  "Shona": [
+    "global_mmlu_full_sn"
+  ],
+  "Sinhala": [
+    "global_mmlu_full_si"
+  ],
+  "Slovak": [
+    "arc_sk",
+    "hellaswag_sk"
+  ],
+  "Somali": [
+    "global_mmlu_full_so"
+  ],
+  "Spanish": [
+    "arc_es",
+    "global_mmlu_full_es",
+    "hellaswag_es",
+    "include_base_44_spanish",
+    "paws_es",
+    "xnli_es"
+  ],
+  "Swahili": [
+    "global_mmlu_full_sw",
+    "xcopa_sw",
+    "xnli_sw"
+  ],
+  "Swedish": [
+    "arc_sv",
+    "global_mmlu_full_sv",
+    "hellaswag_sv"
+  ],
+  "Tagalog": [
+    "global_mmlu_full_fil",
+    "include_base_44_tagalog"
+  ],
+  "Tamil": [
+    "arc_ta",
+    "hellaswag_ta",
+    "include_base_44_tamil",
+    "xcopa_ta"
+  ],
+  "Telugu": [
+    "arc_te",
+    "global_mmlu_full_te",
+    "hellaswag_te",
+    "include_base_44_telugu"
+  ],
+  "Thai": [
+    "xcopa_th",
+    "xnli_th"
+  ],
+  "Turkish": [
+    "global_mmlu_full_tr",
+    "include_base_44_turkish",
+    "xcopa_tr",
+    "xnli_tr"
+  ],
+  "Ukrainian": [
+    "arc_uk",
+    "global_mmlu_full_uk",
+    "hellaswag_uk",
+    "include_base_44_ukrainian"
+  ],
+  "Unknown": [
+    "xwinograd_global"
+  ],
+  "Urdu": [
+    "include_base_44_urdu",
+    "xnli_ur"
+  ],
+  "Uzbek": [
+    "include_base_44_uzbek"
+  ],
+  "Vietnamese": [
+    "arc_vi",
+    "global_mmlu_full_vi",
+    "hellaswag_vi",
+    "include_base_44_vietnamese",
+    "xcopa_vi",
+    "xnli_vi"
+  ],
+  "Yoruba": [
+    "global_mmlu_full_yo"
+  ]
+}
