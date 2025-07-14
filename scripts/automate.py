@@ -100,7 +100,12 @@ def submit_needed():
     running = get_running()
     for name, model in CFG["models"].items():
         status = get_evaluated(name)
-        status.update(running[name])
+        for it, tasks in running[name].items():
+            if it in status:
+                status[it] += tasks
+            else:
+                status[it] = tasks
+
         available = get_available(model["model_dirs"])
         for it in available:
             if (it - model["start_eval_from"]) % model["frequency"] == 0 and it >= model["start_eval_from"]:

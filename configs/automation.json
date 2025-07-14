@@ -1,5 +1,5 @@
 {
-	"logs_root": "/capstor/store/cscs/swissai/a06/users/ahernnde/eval-logs/main-v1.5/",
+	"logs_root": "/capstor/store/cscs/swissai/infra01/users/ahernnde/evals/eval-logs/main-v1.5/",
 	"hf_temp_dir": "/iopsstor/scratch/cscs/ahernnde/hf_temp_dir",
 	"hf_storage_dir": "/capstor/store/cscs/swissai/infra01/hf-checkpoints",
 	"wandb_entity": "epflmlo-epfl",
