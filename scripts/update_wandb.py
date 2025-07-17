@@ -114,7 +114,7 @@ def main(logs_root: Path, name: Optional[str], it: Optional[int],
             assert lang in languages_cfg, lang
     lang_tasks = set(functools.reduce(list.__add__, languages_cfg.values()))
     dim_tasks = set(functools.reduce(list.__add__, dimensions_cfg.values()))
-    assert lang_tasks == dim_tasks, f"{lang_tasks ^ dim_tasks}"
+    assert lang_tasks == dim_tasks, f"{sorted(lang_tasks ^ dim_tasks)}"
 
     tasks_cfg["language_groups"]["global"] = list(languages_cfg)
     tasks_cfg["language_groups"]["multilingual"] = list(set(languages_cfg) - {"English"})
