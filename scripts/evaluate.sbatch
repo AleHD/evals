@@ -175,11 +175,15 @@ echo $SLURM_JOB_ID >> $RUN_ROOT/job_ids.txt
 # Install custom transformers and lm-harness.
 echo Installing transformers and eval harness.
 cd $TEMP_REPOS
-git clone https://github.com/swiss-ai/transformers.git
-cd transformers
-git checkout $TRANSFORMERS_BRANCH
-pip install -e .
-cd ..
+if [[ $TRANSFORMERS_BRANCH = "." ]]; then
+	echo "Skipping transformers installation"
+else
+	git clone https://github.com/swiss-ai/transformers.git
+	cd transformers
+	git checkout $TRANSFORMERS_BRANCH
+	pip install -e .
+	cd ..
+fi
 
 git clone https://github.com/swiss-ai/lm-evaluation-harness.git
 cd lm-evaluation-harness
@@ -240,7 +244,7 @@ COMMON_MODEL_ARGS="pretrained=$HF_CHECKPOINT_PATH,tokenizer=$TOKENIZER,max_lengt
 if [[ $BACKEND = hf ]]; then
 	COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,attn_implementation=flash_attention_2"
 	if [[ $DP -eq 1 ]]; then
-		COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,paralellize=True"
+		COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,parallelize=True"
 	fi
 	COMMON_EVAL_ARGS=(--trust_remote_code)
 else  # vllm
