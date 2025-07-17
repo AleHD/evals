@@ -63,7 +63,6 @@ HARNESS_BRANCH=${HARNESS_BRANCH:-granular_eval}
 EXTRA_PIPS=${EXTRA_PIPS:-""}
 BACKEND=${BACKEND:-hf}
 VLLM_MEMORY=${VLLM_MEMORY:-0.75}
-CUSTOM_MODEL_ARGS=${CUSTOM_MODEL_ARGS:-""}
 export HF_HOME=${HF_HOME:-/capstor/store/cscs/swissai/infra01/hf_home/}
 GPUS_PER_NODE=4
 
@@ -251,10 +250,6 @@ fi
 if [[ $BOS = true ]]; then
 	echo "Adding BOS token."
 	COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,add_bos_token=True"
-fi
-
-if [[ $CUSTOM_MODEL_ARGS != "" ]]; then
-	COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,$CUSTOM_MODEL_ARGS"
 fi
 
 COMMON_EVAL_ARGS+=(
