@@ -12,7 +12,21 @@ import pandas as pd
 import wandb
 
 
-def get_log(infos: List[dict], tasks_cfg: dict) -> Dict[str, float]:
+def get_log(infos: List[dict], tasks_cfg: dict, language_cfg: dict[str, list[str]],
+            dimensions_cfg: dict[str, list[str]]) -> Dict[str, float]:
+
+    def agg(log: dict[str, dict[str, float]], prefix: str, tasks_to_agg: list[str], warn: bool = True):
+        missing = set(log) - set(tasks_to_agg)
+        if len(missing) > 0:
+            if warn:
+                print("WARNING! Macro aggregation for", prefix, "not available. Missing:", sorted(missing))
+            return
+
+        for metric in filter(lambda metric: "stderr" not in metric, all_metrics):
+            values = [log[taskname][metric] for taskname in tasks_to_agg if metric in log[dataname]]
+            if len(values) > 0:
+                log[f"{prefix}.macro"][metric] = statistics.mean(values)
+
     # Aggregate raw info.
     groups = {}
     results = {}
@@ -32,19 +46,39 @@ def get_log(infos: List[dict], tasks_cfg: dict) -> Dict[str, float]:
             all_metrics.add(metricname)
             log[dataname][metricname] = val
 
-    # Do macro aggregations.
-    for groupname, subgroups in tasks_cfg["groups"].items():
-        missing = set(subgroups) - set(results)
-        if len(missing) > 0:
-            print("WARNING! Macro aggregation for", groupname, "not available. Missing:", sorted(missing))
-            continue
-        metrics = sorted(functools.reduce(set.union, (set(log[dataname]) for dataname in subgroups)))
-        for metric in filter(lambda metric: "stderr" not in metric, all_metrics):
-            values = [log[dataname][metric] for dataname in subgroups if metric in log[dataname]]
-            if len(values) > 0:
-                log[f"{groupname}_macro"][metric] = statistics.mean(values)
+    # Filter manual harness groups.
+    for name in ["swissai_eval", "english", "multilingual", "english_pt1", "english_pt2", "multilingual_pt1", "multilingual_pt2"]:
+        if name in log:
+            del log[name]
+    remaining = list(log)
+    for key in remaining:
+        if any(key.startswith(dimension) for dimension in dimensions_cfg):
+            del log[key]
 
-    # Finally, push to wandb.
+    # Now that we have all the "leaf task groups" we can do three aggregations:
+    # {language_group}, {dimension}.{language_group} and {dimension}.{language}.
+    # Let's start with the {language_group} agg.
+    for lang_group_name, lang_group in tasks_cfg["language_groups"].items():
+        nested = [tasks for lang, tasks in language_cfg.items()
+                  if lang in lang_group]
+        tasks_to_agg = functools.reduce(list.__add__, nested)
+        agg(log, lang_group_name, tasks_to_agg)
+
+    # Agregate {dimension}.{language_group}.macro.
+    for lang_group_name, lang_group in tasks_cfg["language_groups"]:
+        nested = [tasks for lang, tasks in language_cfg.items() if lang in lang_group]
+        lang_tasks = functools.reduce(list.__add__, nested)
+        for dimension, dim_tasks in dimensions_cfg.items():
+            tasks_to_agg = list(set(lang_tasks) & set(dim_tasks))
+            agg(log, f"{dimension}.{lang_group_name}", tasks_to_agg)
+
+    # Finally, {dimension}.{language}
+    for lang_name, lang_tasks in language_cfg.items():
+        for dimension, dim_tasks in dimensions_cfg.items():
+            tasks_to_agg = list(set(lang_tasks) & set(dim_tasks))
+            agg(log, f"{dimension}.{lang_name}", tasks_to_agg)
+
+    # Finally, prepare wandb format.
     wandb_log = {}
     for dataname, details in log.items():
         for metric, value in details.items():
@@ -66,11 +100,24 @@ def get_history(name: str) -> Dict[int, Dict[str, float]]:
 
 
 def main(logs_root: Path, name: Optional[str], it: Optional[int],
-         tasks: Path):
+         cfg: Path):
 
-    # model => {metric => value}
-    with open(tasks) as f:
+    with open(cfg/"languages.json") as f:
+        languages_cfg = json.load(f)
+    with open(cfg/"tasks.json") as f:
         tasks_cfg = json.load(f)
+    with open(cfg/"dimensions.json") as f:
+        dimensions_cfg = json.load(f)
+
+    for lang_group in tasks_cfg["language_groups"].values():
+        for lang in lang_group:
+            assert lang in languages_cfg, lang
+    lang_tasks = set(functools.reduce(list.__add__, languages_cfg.values()))
+    dim_tasks = set(functools.reduce(list.__add__, dimensions_cfg.values()))
+    assert lang_tasks == dim_tasks, f"{lang_tasks ^ dim_tasks}"
+
+    tasks_cfg["language_groups"]["global"] = list(languages_cfg)
+    tasks_cfg["language_groups"]["multilingual"] = list(set(languages_cfg) - {"English"})
 
     # Grab each possible log and update wandb run.
     # First, iterate model names.
@@ -99,8 +146,9 @@ def main(logs_root: Path, name: Optional[str], it: Optional[int],
                         results.append(json.load(f))
 
                 if len(results) > 0:
-                    log = get_log(results, tasks_cfg)
+                    log = get_log(results, tasks_cfg, language_cfg, dimensions_cfg)
                     log.update({"ConsumedTokens": consumed_tokens, "OptStep": current_it})
+                    continue
                     sublog = {k: v for k, v in log.items() if "macro/acc" in k}
                     # Update log if needed.
                     if consumed_tokens in history:
@@ -144,6 +192,6 @@ if __name__ == "__main__":
     parser.add_argument("logs_root", type=Path)
     parser.add_argument("--name")
     parser.add_argument("--it", type=int)
-    parser.add_argument("--tasks", type=Path, default=Path("configs/tasks.json"))
+    parser.add_argument("--cfg", type=Path, default=Path("configs"))
     args = parser.parse_args()
     main(**vars(args))
