@@ -112,7 +112,7 @@ def main(logs_root: Path, name: Optional[str], it: Optional[int],
                             print(sorted(set(history[consumed_tokens]) - set(log)))
                             print("Important! wandb log at current iteration already found, but differs. Updating")
                             run.log(log)
-                            print("Logged sucessful:", sublog)
+                            print("Update sucessful:", sublog)
                     else:
                         run.log(log)
                         print("Logged sucessful:", sublog)
