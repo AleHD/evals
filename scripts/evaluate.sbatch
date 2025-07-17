@@ -175,15 +175,11 @@ echo $SLURM_JOB_ID >> $RUN_ROOT/job_ids.txt
 # Install custom transformers and lm-harness.
 echo Installing transformers and eval harness.
 cd $TEMP_REPOS
-if [[ $TRANSFORMERS_BRANCH = "." ]]; then
-	echo "Skipping transformers installation"
-else
-	git clone https://github.com/swiss-ai/transformers.git
-	cd transformers
-	git checkout $TRANSFORMERS_BRANCH
-	pip install -e .
-	cd ..
-fi
+git clone https://github.com/swiss-ai/transformers.git
+cd transformers
+git checkout $TRANSFORMERS_BRANCH
+pip install -e .
+cd ..
 
 git clone https://github.com/swiss-ai/lm-evaluation-harness.git
 cd lm-evaluation-harness
