@@ -53,15 +53,15 @@ IT=$2
 TOKENS_PER_ITER=$3
 NAME=$4
 BS=${BS:-"auto:20"}
-MEGATRON_BRANCH=${MEGATRON_BRANCH:-main}
+MEGATRON_BRANCH=${MEGATRON_BRANCH:-spawn}
 SIZE=${SIZE:-1}
 BOS=${BOS:-false}
 LOGS_ROOT=${LOGS_ROOT:-$SCRATCH/eval-logs}
 TASKS=${TASKS:-swissai_eval}
-TRANSFORMERS_BRANCH=${TRANSFORMERS_BRANCH:-main}
+TRANSFORMERS_BRANCH=${TRANSFORMERS_BRANCH:-aimv2-fix}
 HARNESS_BRANCH=${HARNESS_BRANCH:-granular_eval}
-EXTRA_PIPS=${EXTRA_PIPS:-""}
-BACKEND=${BACKEND:-hf}
+EXTRA_PIPS=${EXTRA_PIPS:-"datasets==4.0.0 nvidia-modelopt==0.27.0"}
+BACKEND=${BACKEND:-vllm}
 VLLM_MEMORY=${VLLM_MEMORY:-0.75}
 export HF_HOME=${HF_HOME:-/capstor/store/cscs/swissai/infra01/hf_home/}
 GPUS_PER_NODE=4
@@ -75,6 +75,8 @@ export MASTER_ADDR=$(hostname)
 export MASTER_PORT=25678
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export HF_ALLOW_CODE_EVAL=1
+export OMP_NUM_THREADS=$(( 8 * $GPUS_PER_NODE ))
+export VLLM_WORKER_MULTIPROC_METHOD=spawn
 
 # Determine the CONSUMED_TOKENS based on how TOKENS_PER_ITER is specified.
 if [[ $TOKENS_PER_ITER = *,* ]]; then  # TOKENS_PER_ITER specified in a "tok0:it0,tok1:it1,tok2:" way
@@ -264,7 +266,7 @@ COMMON_EVAL_ARGS+=(
 	$LIMIT_ARGS
 )
 if [[ $DP -eq 1 ]]; then  # Only use model parallel.
-	#export WORLD_SIZE=1
+	export WORLD_SIZE=1
 	CMD="lm_eval --model_args=$COMMON_MODEL_ARGS ${COMMON_EVAL_ARGS[@]}"
 elif (( MP > 1 )); then  # Use data parallel and model parallel.
 	CMD="accelerate launch --multi_gpu --num_processes $DP -m lm_eval --model_args=$COMMON_MODEL_ARGS,parallelize=True ${COMMON_EVAL_ARGS[@]}"
