@@ -6,10 +6,6 @@
 	"wandb_project": "swissai-eval-main-v1.5",
 	"num_hf_checkpoints_to_keep": 1,
 	"extra_env": {
-		"BACKEND": "vllm",
-		"TRANSFORMERS_BRANCH": "aimv2-fix",
-		"MEGATRON_BRANCH": "spawn",
-		"VLLM_WORKER_MULTIPROC_METHOD": "spawn",
 		"EXTRA_PIPS": "datasets==4.0.0 nvidia-modelopt==0.27.0 git+https://github.com/nickjbrowning/XIELU"
 	},
 	"models": {

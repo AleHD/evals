@@ -59,8 +59,8 @@ BOS=${BOS:-false}
 LOGS_ROOT=${LOGS_ROOT:-$SCRATCH/eval-logs}
 TASKS=${TASKS:-swissai_eval}
 TRANSFORMERS_BRANCH=${TRANSFORMERS_BRANCH:-aimv2-fix}
-HARNESS_BRANCH=${HARNESS_BRANCH:-granular_eval}
-EXTRA_PIPS=${EXTRA_PIPS:-"datasets==4.0.0 nvidia-modelopt==0.27.0"}
+HARNESS_BRANCH=${HARNESS_BRANCH:-newmain-test}
+EXTRA_PIPS=${EXTRA_PIPS:-"datasets==4.0.0"}
 BACKEND=${BACKEND:-vllm}
 VLLM_MEMORY=${VLLM_MEMORY:-0.75}
 export HF_HOME=${HF_HOME:-/capstor/store/cscs/swissai/infra01/hf_home/}
