@@ -19,7 +19,6 @@ import shutil
 from pathlib import Path
 
 
-
 def unify(completed: list[str]) -> list[str]:
     completed_set = set(completed)
     unified = []
@@ -92,6 +91,7 @@ def submit(name: str, model: dict, it: int, tasks: list[str]):
            "SIZE": str(model["size"]),
            "HF_TEMP_DIR": CFG["hf_temp_dir"],
            "TASKS": tasks}
+    env.update(CFG["extra_env"])
     print("Launching", name, it, tasks, path)
     subprocess.run(cmd, env=env, stdout=subprocess.PIPE)
 

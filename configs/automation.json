@@ -5,6 +5,9 @@
 	"wandb_entity": "epflmlo-epfl",
 	"wandb_project": "swissai-eval-main-v1.5",
 	"num_hf_checkpoints_to_keep": 1,
+	"extra_env": {
+		"EXTRA_PIPS": "datasets==4.0.0 nvidia-modelopt==0.27.0 git+https://github.com/nickjbrowning/XIELU"
+	},
 	"models": {
 		"Apertus-70B": {
 			"model_dirs": [
