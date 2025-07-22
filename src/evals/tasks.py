@@ -48,9 +48,10 @@ class Task:
     size: int = None
     language: iso639.Lang = None
     dimension: Dimension = None
+    alias: tuple[str] = ()
 
     def __hash__(self) -> int:
-        return hash((self.name, self.kinds, self.size, self.language.pt1, self.dimension))
+        return hash((self.name, self.kinds, self.size, self.language.pt1, self.dimension, self.alias))
 
     def __post_init__(self):
         # Infer size, language and dimension if not specified.
@@ -151,9 +152,14 @@ def get_all_tasks(all_tasks_json: Path = Path("configs/all_tasks.json")) -> list
         for name in names:
             tasks.append(Task(name, (kind,)))
     for row in raw_tasks["other"]:
-        tasks.append(Task(row["name"], tuple(row["kinds"]), row.get("size"),
-                          None if row["language"] is None else iso639.Lang(row["language"]),
-                          row.get("dimension")))
+        tasks.append(Task(
+            name=row["name"],
+            kinds=tuple(row["kinds"]),
+            size=row.get("size"),
+            language=None if row["language"] is None else iso639.Lang(row["language"]),
+            dimension=row.get("dimension"),
+            alias=tuple(row.get("alias", ())),
+        ))
     return tasks
 
 
