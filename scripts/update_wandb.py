@@ -164,6 +164,7 @@ def main(logs_root: Path, name: Optional[str], it: Optional[int], cfg: Path):
                             run.log(log)
                     else:
                         run.log(log)
+                        print("Logging")
 
                     # Update all_logs so we can build the table after this big loop.
                     if p1.name not in latest_logs or latest_logs[p1.name]["ConsumedTokens"] < consumed_tokens:

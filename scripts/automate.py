@@ -93,6 +93,7 @@ def submit(name: str, model: dict, it: int, tasks: list[Task]):
                "SIZE": str(model["size"]),
                "HF_TEMP_DIR": CFG["hf_temp_dir"],
                "TASKS": ",".join(task.name for task in part)}
+        env.update(CFG["extra_env"])
         print("Launching", jobname)
         subprocess.run(cmd, env=env, stdout=subprocess.PIPE)
 
