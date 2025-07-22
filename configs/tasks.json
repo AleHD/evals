@@ -1,49 +1,47 @@
 {
-	"show_in_table": [
-		"mmlu/acc",
-		"hellaswag/acc"
-	],
+	"show_in_table": ["mmlu/acc", "hellaswag/acc"],
 	"language_groups": {
 		"english": [
-			"en"
+			"English"
 		],
 		"swiss": [
-			"de",
-			"fr",
-			"it",
-			"rm"
+			"German",
+			"French",
+			"Italian",
+			"Romansh"
 		],
 		"eu": [
-			"sq",
-			"hy",
-			"eu",
-			"be",
-			"bg",
-			"ca",
-			"hr",
-			"da",
-			"nl",
-			"en",
-			"et",
-			"fi",
-			"fr",
-			"ka",
-			"de",
-			"el",
-			"hu",
-			"it",
-			"lt",
-			"mk",
-			"pl",
-			"pt",
-			"ro",
-			"rm",
-			"ru",
-			"sr",
-			"sk",
-			"es",
-			"sv",
-			"uk"
+			"Albanian",
+			"Armenian",
+			"Basque",
+			"Belarusian",
+			"Bulgarian",
+			"Catalan",
+			"Croatian",
+			"Czech",
+			"Danish",
+			"Dutch",
+			"English",
+			"Estonian",
+			"Finnish",
+			"French",
+			"Georgian",
+			"German",
+			"Greek",
+			"Hungarian",
+			"Italian",
+			"Lithuanian",
+			"North Macedonian",
+			"Polish",
+			"Portuguese",
+			"Romanian",
+			"Romansh",
+			"Russian",
+			"Serbian",
+			"Slovak",
+			"Spanish",
+			"Swedish",
+			"Ukrainian"
 		]
 	}
 }
