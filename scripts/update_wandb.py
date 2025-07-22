@@ -25,7 +25,7 @@ def get_log(infos: List[dict], tasks_cfg: dict) -> Dict[str, float]:
     log = collections.defaultdict(dict)
     for dataname, details in results.items():
         for metricname, val in details.items():
-            if metricname == "alias" or val == "N/A":
+            if metricname == "alias" or val in ["N/A", " "]:
                 continue
             assert isinstance(val, float), val
             metricname, _ = metricname.split(",")  # for some reason it is always acc,none so we remove the none.
