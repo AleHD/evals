@@ -52,11 +52,19 @@ BS=${BS:-"auto:20"}
 SIZE=${SIZE:-1}
 BOD=${BOD:-false}
 LOGS_ROOT=${LOGS_ROOT:-$SCRATCH/eval-logs}
-TASKS=${TASKS:-swissai_eval}
+TASKS=${TASKS:-./configs/tasks_alignment.txt}
+TABLE_METRICS=${TABLE_METRICS:-./configs/tasks_alignment_main_table.txt}
+
 if [ -f "$TASKS" ]; then
     echo "Reading task list from file: $TASKS"
     TASKS=$(paste -sd, "$TASKS")
 fi
+
+if [ -f "$TABLE_METRICS" ]; then
+	echo "Reading table metrics from file: $TABLE_METRICS"
+	TABLE_METRICS=$(paste -sd, "$TABLE_METRICS")
+fi
+
 export HF_HOME=${HF_HOME:-/capstor/store/cscs/swissai/infra01/hf_home/}
 GPUS_PER_NODE=4
 
@@ -139,5 +147,13 @@ srun -ul --environment=./containers/env.toml bash -c " \
 
 # Goodbye.
 echo "Evaluation finished"
-echo "Now run 'python scripts/update_wandb.py $LOGS_ROOT --name $NAME --it $IT' to update wandb space."
+echo "Sleeping for 1 minute before uploading results to wandb..."
+sleep 60
+echo "Uploading results to wandb"
+WANDB_CMD="python scripts/update_wandb_alignment.py --entity idoh-ethz --project swissai-evals --logs_root $LOGS_ROOT --name $NAME --main_metrics $TABLE_METRICS"
+echo "Now run the following command to upload results to wandb:"
+echo "$WANDB_CMD"
+srun -ul --environment=./containers/env.toml bash -c " \
+    $WANDB_CMD
+"
 echo "END TIME: $(date)"

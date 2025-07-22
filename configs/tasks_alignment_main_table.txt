@@ -1,0 +1,5 @@
+gsm8k/exact_match
+mathqa/acc
+ifeval/prompt_level_strict_acc
+mmlu/acc
+hellaswag/acc
