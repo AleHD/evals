@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import re
 import dataclasses
 import enum
 import json
 import os
 from pathlib import Path
+from typing import Optional
 
 import requests
 import iso639
+import prtpy
 
 
 REQUEST_CACHE = {}
@@ -22,7 +25,7 @@ class Dimension(enum.StrEnum):
     def get(cls, name: str) -> Dimension:
         general = ["hellaswag", "piqa", "arc", "ai2_arc", "winogrande", "xwinograd", "xnli", "copa", "xcopa"]
         agnostic = ["mmlu", "global_mmlu"]
-        regional = ["include", "switzerland_qa"]
+        regional = ["include", "switzerland_qa", "cultural_bench", "blend"]
 
         if any(name.startswith(group) for group in general):
             return Dimension.general_abilities
@@ -71,16 +74,31 @@ def _infer_size(name: str) -> int:
         response = requests.get(url, headers=headers)
         return response.json()
 
+    def get_split(names: list[str]) -> str:
+        maybe_specific = [pattern for pattern in specific_splits if re.match(pattern, name) is not None]
+        if len(maybe_specific):
+            pattern, = maybe_specific
+            return specific_splits[pattern]
+        if len(names) == 1:
+            return names[0]
+        if "test" in names:
+            return "test"
+
+        print("Unknown", name, names)
+
+    # Get `source, config` when exact names match.
     exact_sources = {
         "hellaswag": ("Rowan/hellaswag", "default"),
-        "mmlu": ("cais/mmlu", None),
+        "mmlu": ("cais/mmlu", "all"),
         "winogrande": ("allenai/winogrande", "winogrande_xl"),
         "ai2_arc": ("allenai/ai2_arc", None),
+        "cultural_bench": ("kellycyy/CulturalBench", None),
     }
 
+    # Get `source` and infer language when task names have underscores.
     underscore_sources = {
         "arc": "alexandrainst/m_arc",
-        "global_mmlu": "CohereLabs/Global-MMLU",
+        "global_mmlu": "CohereLabs/Global-MMLU-Lite",
         "hellaswag": "alexandrainst/m_hellaswag",
         "include_base_44": "CohereLabs/include-base-44",
         "xcopa": "cambridgeltl/xcopa",
@@ -88,6 +106,14 @@ def _infer_size(name: str) -> int:
         "xwinograd": "Muennighoff/xwinograd",
     }
 
+    # These tasks use a very specific split:
+    specific_splits = {
+        r"xnli_.*": "validation",
+        "winogrande": "validation",
+        "^hellaswag$": "validation",
+    }
+
+    # Get `source ` and `config` based on the above dicts.
     if name in exact_sources:
         source, config = exact_sources[name]
     elif "_" in name:
@@ -98,22 +124,22 @@ def _infer_size(name: str) -> int:
         config = name.split("_")[-1]
     else:
         raise ValueError(f"Could not infer size for task {name}")
-
-    if name.startswith("include_base_44"):
+    if name.startswith("include_base_44"):  # Include languages need to start with Capital letters.
         config = config.title()
-
-    if source not in REQUEST_CACHE:
+    if source not in REQUEST_CACHE:  # HTTPS request if not already queried.
         REQUEST_CACHE[source] = query(source)
+    req = REQUEST_CACHE[source]
 
+    # Get the `split_name` available.
     if config is None:
-        all_splits = [subset["splits"]
-                      for subset in REQUEST_CACHE[source]["dataset_info"].values()]
+        all_splits = [subset["splits"] for subset in req["dataset_info"].values()]
+        for split in all_splits:
+            assert {split_name for split_name in split} == {split_name for split_name in all_splits[0]}, name
     else:
-        all_splits = [REQUEST_CACHE[source]["dataset_info"][config]["splits"]]
-    return sum(split["num_examples"]
-               for splits in all_splits for split in splits.values())
+        all_splits = [req["dataset_info"][config]["splits"]]
+    split_name = get_split([split_name for split_name in all_splits[0]])
 
-
+    return sum(splits[split_name]["num_examples"] for splits in all_splits)
 
 
 def get_all_tasks(all_tasks_json: Path = Path("configs/all_tasks.json")) -> list[Task]:
@@ -125,6 +151,18 @@ def get_all_tasks(all_tasks_json: Path = Path("configs/all_tasks.json")) -> list
         for name in names:
             tasks.append(Task(name, (kind,)))
     for row in raw_tasks["other"]:
-        tasks.append(Task(row["name"], tuple(row["kinds"]), row["size"],
-                          None if row["language"] is None else iso639.Lang(row["language"]), row["dimension"]))
+        tasks.append(Task(row["name"], tuple(row["kinds"]), row.get("size"),
+                          None if row["language"] is None else iso639.Lang(row["language"]),
+                          row.get("dimension")))
     return tasks
+
+
+def get_partition(tasks: Optional[list[Task]] = None, shards: int = 1,
+                  all_tasks_json: Path = Path("configs/all_tasks.json")) -> tuple[list[Task], ...]:
+
+    if tasks is None:
+        tasks = get_all_tasks(all_tasks_json=all_tasks_json)
+    if shards == 1:
+        return tasks,
+    return tuple(prtpy.partition(prtpy.partitioning.greedy, shards, tasks,
+                                 valueof=lambda task: task.size))

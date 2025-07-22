@@ -7,6 +7,8 @@ requires-python = ">=3.11"
 dependencies = [
     "iso639-lang>=2.6.1",
     "pandas>=2.3.0",
+    "prtpy>=0.8.3",
+    "pyyaml>=6.0.2",
     "requests>=2.32.4",
     "wandb>=0.20.1",
 ]

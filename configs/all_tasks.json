@@ -13,7 +13,23 @@
 		{"name": "switzerland_qa_fr", "kinds": ["pretrain"], "size": 9160, "language": null, "dimension": null},
 		{"name": "switzerland_qa_it", "kinds": ["pretrain"], "size": 9160, "language": null, "dimension": null},
 		{"name": "switzerland_qa_rm", "kinds": ["pretrain"], "size": 9160, "language": null, "dimension": null},
-		{"name": "switzerland_qa_en", "kinds": ["pretrain"], "size": 9160, "language": null, "dimension": null}
-
+		{"name": "switzerland_qa_en", "kinds": ["pretrain"], "size": 9160, "language": null, "dimension": null},
+		{"name": "cultural_bench", "kinds": ["pretrain"], "size": null, "language": "en", "dimension": null},
+		{"name": "blend_algeria", "kinds": ["pretrain"], "size": 20364, "language": "ar", "kind": null},
+		{"name": "blend_assam", "kinds": ["pretrain"], "size": 21293, "language": "as", "kind": null},
+		{"name": "blend_azerbaijan", "kinds": ["pretrain"], "size": 19932, "language": "az", "kind": null},
+		{"name": "blend_china", "kinds": ["pretrain"], "size": 20410, "language": "zh", "kind": null},
+		{"name": "blend_ethiopia", "kinds": ["pretrain"], "size": 22712, "language": "am", "kind": null},
+		{"name": "blend_greece", "kinds": ["pretrain"], "size": 20383, "language": "el", "kind": null},
+		{"name": "blend_indonesia", "kinds": ["pretrain"], "size": 18417, "language": "id", "kind": null},
+		{"name": "blend_iran", "kinds": ["pretrain"], "size": 19371, "language": "fa", "kind": null},
+		{"name": "blend_mexico", "kinds": ["pretrain"], "size": 20513, "language": "es", "kind": null},
+		{"name": "blend_north_korea", "kinds": ["pretrain"], "size": 17005, "language": "ko", "kind": null},
+		{"name": "blend_northern_nigeria", "kinds": ["pretrain"], "size": 16317, "language": "ha", "kind": null},
+		{"name": "blend_south_korea", "kinds": ["pretrain"], "size": 21439, "language": "ko", "kind": null},
+		{"name": "blend_spain", "kinds": ["pretrain"], "size": 19280, "language": "es", "kind": null},
+		{"name": "blend_uk", "kinds": ["pretrain"], "size": 16723, "language": "en", "kind": null},
+		{"name": "blend_us", "kinds": ["pretrain"], "size": 16491, "language": "en", "kind": null},
+		{"name": "blend_west_java", "kinds": ["pretrain"], "size": 15289, "language": "su", "kind": null}
 	]
 }
