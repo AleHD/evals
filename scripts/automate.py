@@ -94,7 +94,7 @@ def submit(name: str, model: dict, it: int, tasks: list[Task]):
                "HF_TEMP_DIR": CFG["hf_temp_dir"],
                "TASKS": ",".join(task.name for task in part)}
         print("Launching", jobname)
-        #subprocess.run(cmd, env=env, stdout=subprocess.PIPE)
+        subprocess.run(cmd, env=env, stdout=subprocess.PIPE)
 
 
 def submit_needed():
@@ -138,11 +138,6 @@ def submit_needed():
                         missing.append(task)
                 if len(missing) > 0:
                     submit(name, model, it, missing)
-                    #if model["size"] < 70:
-                    #    submit(name, model, it, missing)
-                    #else:
-                    #    for task in missing:
-                    #        submit(name, model, it, [task])
 
 
 def update_hf_checkpoints():
@@ -193,9 +188,9 @@ def sync_wandb():
 
 def main():
     submit_needed()
-    #update_hf_checkpoints()
-    #cleanup_hf_checkpoints()
-    #sync_wandb()
+    update_hf_checkpoints()
+    cleanup_hf_checkpoints()
+    sync_wandb()
 
 
 if __name__ == "__main__":
