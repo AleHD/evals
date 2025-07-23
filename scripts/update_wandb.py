@@ -2,6 +2,7 @@ import collections
 import statistics
 import re
 import json
+import math
 import os
 from argparse import ArgumentParser
 from pathlib import Path
@@ -15,25 +16,41 @@ from evals.tasks import get_all_tasks, Task
 
 
 def get_log(infos: List[dict], tasks_cfg: dict, all_tasks: list[Task]) -> dict[str, float]:
-    def agg(log: dict[str, dict[str, float]], prefix: str, tasks_to_agg: list[str], warn: bool = True):
+    def agg(log: dict[str, dict[str, float]], prefix: str, tasks_to_agg: list[str], warn: bool = True,
+            macro: bool = True, micro: bool = True, no_micro_suffix: bool = False):
+
         missing = set(tasks_to_agg) - set(log)
         if len(missing) > 0:
             if warn:
-                print("WARNING! Macro aggregation for", prefix, "not available. Missing:", sorted(missing))
+                print("WARNING! Aggregation for", prefix, "not available. Missing:", sorted(missing))
             return
 
         for metric in filter(lambda metric: "stderr" not in metric, all_metrics):
             values = [log[taskname][metric] for taskname in tasks_to_agg if metric in log[taskname]]
+            sizes = [true_sizes[taskname] for taskname in tasks_to_agg if metric in log[taskname]]
             if len(values) > 0:
-                log[f"{prefix}.macro"][metric] = statistics.mean(values)
+                if macro:
+                    log[f"{prefix}.macro"][metric] = statistics.mean(values)
+                if micro:
+                    micro_name = prefix if no_micro_suffix else f"{prefix}.micro"
+                    log[micro_name][metric] = sum(value*size for value, size in zip(values, sizes))/sum(sizes)
+
 
     # Aggregate raw info.
     groups = {}
     results = {}
+    true_sizes = {}
     all_metrics = set()
     for info in infos:
         groups.update(info["group_subtasks"])
         results.update(info["results"])
+        true_sizes.update({name: details["effective"] for name, details in info["n-samples"].items()})
+
+    # Aggregate task into true_sizes if needed.
+    for taskname in results:
+        if taskname not in true_sizes:
+            true_sizes[taskname] = sum(size for other_taskname, size in true_sizes.items()
+                                       if other_taskname.startswith(taskname))
 
     # Prepare final logs.
     log = collections.defaultdict(dict)
@@ -45,6 +62,17 @@ def get_log(infos: List[dict], tasks_cfg: dict, all_tasks: list[Task]) -> dict[s
             metricname, _ = metricname.split(",")  # for some reason it is always acc,none so we remove the none.
             all_metrics.add(metricname)
             log[dataname][metricname] = val
+
+    # Fix cultural bench microaggregation.
+    cultural_bench_parts = ["cultural_bench", "cultural_bench_easy", "cultural_bench_hard"]
+    for prefix in cultural_bench_parts:
+        tasks_to_agg = [taskname for taskname in results
+                        if taskname.startswith(prefix) and taskname not in cultural_bench_parts]
+        target = 2*45 if prefix == "cultural_bench" else 45
+        if len(tasks_to_agg) == target:
+            agg(log, prefix, tasks_to_agg, macro=False, no_micro_suffix=True)
+        else:
+            print("WARNING! Couldn't fix", prefix, "because it hasn't been evaluated", tasks_to_agg)
 
     # Now that we have all the "leaf task groups" we can do four aggregations:
     # Let's start with the {language_group} agg.
@@ -60,7 +88,6 @@ def get_log(infos: List[dict], tasks_cfg: dict, all_tasks: list[Task]) -> dict[s
                         if task.dimension == dim]
         agg(log, f"dimension/{dim}", list(tasks_to_agg))
 
-
     # Agregate {dimension}.{language_group}.macro.
     for lang_group_name, langs in tasks_cfg["language_groups"].items():
         for dim in all_dims:
@@ -74,7 +101,7 @@ def get_log(infos: List[dict], tasks_cfg: dict, all_tasks: list[Task]) -> dict[s
         for dim in all_dims:
             tasks_to_agg = [task.name for task in all_tasks
                             if task.language.pt1 == lang and task.dimension == dim]
-            agg(log, f"dimension_lang/{dim}.{lang}", list(tasks_to_agg))
+            agg(log, f"dimension_lang/{dim}.{lang}", list(tasks_to_agg), warn=False)
 
     # Finally, prepare wandb format.
     wandb_log = {}
@@ -92,8 +119,9 @@ def get_history(name: str) -> Dict[int, Dict[str, float]]:
         return {}
     history = collections.defaultdict(dict)
     for row in run.scan_history():
-        row = {key: value for key, value in row.items() if not key.startswith("_")}
-        history[row["ConsumedTokens"]] = row
+        row = {key: float(value) for key, value in row.items()
+               if not key.startswith("_") and key != "eval_table"}
+        history[row["ConsumedTokens"]].update(row)
     return history
 
 
@@ -152,14 +180,15 @@ def main(logs_root: Path, name: Optional[str], it: Optional[int], cfg: Path):
                 if len(results) > 0:
                     log = get_log(results, tasks_cfg, all_tasks)
                     log.update({"ConsumedTokens": consumed_tokens, "OptStep": current_it})
+
                     # Update log if needed.
                     if consumed_tokens in history:
-                        if "eval_table" in history[consumed_tokens]:
-                            del history[consumed_tokens]["eval_table"]
+                        for key in set(history[consumed_tokens]) - set(log):
+                            log[key] = -float("inf")
+
                         if log == history[consumed_tokens]:
                             print("Exact log already matches wandb! Ignoring entry to avoid pushing duplicates")
                         else:
-                            print(sorted(set(history[consumed_tokens]) - set(log)))
                             print("Important! wandb log at current iteration already found, but differs. Updating")
                             run.log(log)
                     else:

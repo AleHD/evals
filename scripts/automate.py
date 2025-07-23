@@ -34,13 +34,13 @@ def get_running(as_jobname: bool = False) -> dict[str, dict[int, list[str]] | li
 
     running = [] if as_jobname else collections.defaultdict(lambda: collections.defaultdict(list))
     for jobname in jobnames:
-        rmatch = re.match(r"^eval_(.*)_([a-zA-Z]+)_([0-9]+)$", jobname)
+        rmatch = re.match(r"^eval_(.*)_([a-zA-Z0-9]+)_([0-9]+)$", jobname)
         if rmatch is not None:
             if as_jobname:
                 running.append(jobname)
             else:
                 name, group, it = rmatch.groups()
-                running[name][int(it)] += group
+                running[name][int(it)].append(group)
     return running
 
 
@@ -66,22 +66,33 @@ def get_available(model_dirs: list[Path]) -> list[int]:
 def submit(name: str, model: dict, it: int, tasks: list[Task]):
     # Get partition of tasks.
     total_size = sum(task.size for task in ALL_TASKS)
+    n_def_shards = math.ceil(total_size/model["max_samples"])
+    default_partition = get_partition(tasks=ALL_TASKS, shards=n_def_shards)
+
+    # Check all parts of the default partition, if any of them is 
+    # completely contained in the tasks requested, launch that shard.
+    shards_to_launch = []
+    for shard_i, part in enumerate(default_partition):
+        if set(part) <= set(tasks):
+            shards_to_launch.append((shard_i, part))
+            tasks = [task for task in tasks if task not in part]
+
+    # For all remaining tasks that don't match perfectly a default part,
+    # create a "mixed" job submission.
+    total_size = sum(task.size for task in tasks)
     n_shards = math.ceil(total_size/model["max_samples"])
     partition = get_partition(tasks=tasks, shards=n_shards)
-    default_partition = get_partition(tasks=ALL_TASKS, shards=n_shards)
+    for part in partition:
+        shards_to_launch.append(("mixed", part))
 
     # Schedule all tasks requested.
     path, = (model_dir for model_dir in model["model_dirs"]
              if Path(f"{model_dir}/iter_{it:07d}").exists())
-    for part in partition:
-        # Get special jobname depending on the tasks requested.
-        matches = [(i, default_part) for i, default_part in enumerate(default_partition)
-                   if part == default_part]
-        if len(matches) == 0:
+    for shard_i_or_mixed, tasks_to_launch in shards_to_launch:
+        if shard_i_or_mixed == "mixed":
             jobname = "mixed"
         else:
-            (shard_i, _), = matches
-            jobname = f"shard{shard_i}of{n_shards}"
+            jobname = f"shard{shard_i_or_mixed}of{n_def_shards}"
         jobname = f"eval_{name}_{jobname}_{it}"
 
         cmd = ["sbatch", f"--job-name={jobname}", "scripts/evaluate.sbatch", str(path),
@@ -92,7 +103,7 @@ def submit(name: str, model: dict, it: int, tasks: list[Task]):
                "BOS": "true",
                "SIZE": str(model["size"]),
                "HF_TEMP_DIR": CFG["hf_temp_dir"],
-               "TASKS": ",".join(task.name for task in part)}
+               "TASKS": ",".join(task.name for task in tasks_to_launch)}
         env.update(CFG["extra_env"])
         print("Launching", jobname)
         subprocess.run(cmd, env=env, stdout=subprocess.PIPE)
@@ -114,17 +125,21 @@ def submit_needed():
         # otherwise obtain the correct shard.
         for it, groups in running[name].items():
             for group in groups:
-                if groups == "mixed":
+                if group == "mixed":
                     actual_tasks = ALL_TASKS
                 else:
                     shard_i, total_shards = re.match("^shard([0-9]+)of([0-9]+)$", group).groups()
-                    assert total_shards == n_shards
+                    assert int(total_shards) == n_shards
                     actual_tasks = default_partition[int(shard_i)]
 
+                expected_names = []
+                for task in actual_tasks:
+                    expected_names += [task.name] if len(task.alias) == 0 else list(task.alias)
+
                 if it in status:
-                    status[it] += [task.name for task in actual_tasks]
+                    status[it] += expected_names
                 else:
-                    status[it] = [task.name for task in actual_tasks]
+                    status[it] = expected_names
 
         available = get_available(model["model_dirs"])
         for it in available:
@@ -189,9 +204,9 @@ def sync_wandb():
 
 def main():
     submit_needed()
-    update_hf_checkpoints()
-    cleanup_hf_checkpoints()
-    sync_wandb()
+    #update_hf_checkpoints()
+    #cleanup_hf_checkpoints()
+    #sync_wandb()
 
 
 if __name__ == "__main__":

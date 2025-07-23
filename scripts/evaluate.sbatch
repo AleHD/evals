@@ -256,7 +256,7 @@ fi
 
 COMMON_EVAL_ARGS+=(
 	--batch_size $BS
-	--tasks $TASKS
+	--tasks "$TASKS"
 	--output $HARNESS_DIR/eval_$SLURM_JOBID
 	--max_batch_size 128
 	--cache_requests true
