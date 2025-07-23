@@ -3,11 +3,10 @@
 	"hf_temp_dir": "/iopsstor/scratch/cscs/ahernnde/hf_temp_dir",
 	"hf_storage_dir": "/capstor/store/cscs/swissai/infra01/hf-checkpoints",
 	"wandb_entity": "epflmlo-epfl",
-	"wandb_project": "swissai-eval-main-v1.5",
+	"wandb_project": "swissai-eval-main-v1.6",
 	"num_hf_checkpoints_to_keep": 1,
 	"extra_env": {
-		"EXTRA_PIPS": "nvidia-modelopt==0.27.0",
-		"HARNESS_BRANCH": "main"
+		"EXTRA_PIPS": "nvidia-modelopt==0.27.0"
 	},
 	"models": {
 		"Apertus-70B": {
@@ -21,6 +20,14 @@
 			"tokens_per_iter": "8388608:523519,16777216:",
 			"frequency": 15000,
 			"start_eval_from": 1070000
-		  }
+		},
+		"Apertus-8B": {
+			"model_dirs": ["/iopsstor/scratch/cscs/schlag/main_run_megatron/Megatron-LM/logs/Meg-Runs/main-runs-v1/apertus3-8b-128-nodes/checkpoints/"],
+			"max_samples": 5000000,
+			"size": 8,
+			"tokens_per_iter": "4194304",
+			"frequency": 250000,
+			"start_eval_from": 250000
+		}
 	 }
 }

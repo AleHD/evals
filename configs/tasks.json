@@ -1,7 +1,9 @@
 {
 	"show_in_table": [
 		"mmlu/acc",
-		"global_mmlu/acc"
+		"global_mmlu/acc",
+		"include_base_44/acc",
+		"hellaswag/acc"
 	],
 	"language_groups": {
 		"english": [

@@ -2,7 +2,6 @@ import collections
 import statistics
 import re
 import json
-import math
 import os
 from argparse import ArgumentParser
 from pathlib import Path
@@ -14,10 +13,10 @@ import iso639
 
 from evals.tasks import get_all_tasks, Task
 
-
 def get_log(infos: List[dict], tasks_cfg: dict, all_tasks: list[Task]) -> dict[str, float]:
     def agg(log: dict[str, dict[str, float]], prefix: str, tasks_to_agg: list[str], warn: bool = True,
-            macro: bool = True, micro: bool = True, no_micro_suffix: bool = False):
+            macro: bool = True, micro: bool = True, no_micro_suffix: bool = False,
+            no_macro_suffix: bool = False, metrics: Optional[list[str]] = None):
 
         missing = set(tasks_to_agg) - set(log)
         if len(missing) > 0:
@@ -25,15 +24,19 @@ def get_log(infos: List[dict], tasks_cfg: dict, all_tasks: list[Task]) -> dict[s
                 print("WARNING! Aggregation for", prefix, "not available. Missing:", sorted(missing))
             return
 
-        for metric in filter(lambda metric: "stderr" not in metric, all_metrics):
+        for metric in filter(lambda metric: "stderr" not in metric and (metrics is None or metric in metrics), all_metrics):
             values = [log[taskname][metric] for taskname in tasks_to_agg if metric in log[taskname]]
             sizes = [true_sizes[taskname] for taskname in tasks_to_agg if metric in log[taskname]]
             if len(values) > 0:
                 if macro:
-                    log[f"{prefix}.macro"][metric] = statistics.mean(values)
+                    macro_name = prefix if no_macro_suffix else f"{prefix}.macro"
+                    log[macro_name][metric] = statistics.mean(values)
                 if micro:
                     micro_name = prefix if no_micro_suffix else f"{prefix}.micro"
                     log[micro_name][metric] = sum(value*size for value, size in zip(values, sizes))/sum(sizes)
+
+    def pretty_dim(dim: str) -> str:
+        return " ".join(dim.split("_")).title()
 
 
     # Aggregate raw info.
@@ -46,7 +49,7 @@ def get_log(infos: List[dict], tasks_cfg: dict, all_tasks: list[Task]) -> dict[s
         results.update(info["results"])
         true_sizes.update({name: details["effective"] for name, details in info["n-samples"].items()})
 
-    # Aggregate task into true_sizes if needed.
+    # Aggregate true_sizes if needed.
     for taskname in results:
         if taskname not in true_sizes:
             true_sizes[taskname] = sum(size for other_taskname, size in true_sizes.items()
@@ -79,29 +82,22 @@ def get_log(infos: List[dict], tasks_cfg: dict, all_tasks: list[Task]) -> dict[s
     for lang_group_name, langs in tasks_cfg["language_groups"].items():
         tasks_to_agg = [task.name for task in all_tasks
                         if task.language.pt1 in langs]
-        agg(log, f"language_group/{lang_group_name}", list(tasks_to_agg))
+        agg(log, f"All Tasks/{lang_group_name}", list(tasks_to_agg), micro=False, metrics=["acc"])
 
     # Aggregate start with the {dimension} agg.
     all_dims = sorted({task.dimension for task in all_tasks})
     for dim in all_dims:
         tasks_to_agg = [task.name for task in all_tasks
                         if task.dimension == dim]
-        agg(log, f"dimension/{dim}", list(tasks_to_agg))
+        agg(log, f"All Dimensions/{pretty_dim(dim)}", list(tasks_to_agg), micro=False, metrics=["acc"])
 
-    # Agregate {dimension}.{language_group}.macro.
+    # Aggregate {dimension}.{language_group}.macro.
     for lang_group_name, langs in tasks_cfg["language_groups"].items():
         for dim in all_dims:
             tasks_to_agg = [task.name for task in all_tasks
                             if task.language.pt1 in langs and task.dimension == dim]
-            agg(log, f"dimension_group/{dim}.{lang_group_name}", list(tasks_to_agg))
+            agg(log, f"{pretty_dim(dim)}/{lang_group_name}", list(tasks_to_agg), micro=False, metrics=["acc"])
 
-    # Finally, {dimension}.{language}
-    all_langs = sorted({task.language.pt1 for task in all_tasks})
-    for lang in all_langs:
-        for dim in all_dims:
-            tasks_to_agg = [task.name for task in all_tasks
-                            if task.language.pt1 == lang and task.dimension == dim]
-            agg(log, f"dimension_lang/{dim}.{lang}", list(tasks_to_agg), warn=False)
 
     # Finally, prepare wandb format.
     wandb_log = {}
@@ -215,6 +211,8 @@ def main(logs_root: Path, name: Optional[str], it: Optional[int], cfg: Path):
             df = pd.DataFrame([sublog])
             with wandb.init(id=name, name=name) as run:
                 run.log({"eval_table": wandb.Table(dataframe=df), "ConsumedTokens": log["ConsumedTokens"]})
+
+    # Update text description.
     print("Goodbye")
 
 
