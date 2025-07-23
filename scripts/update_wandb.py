@@ -115,7 +115,7 @@ def get_history(name: str) -> Dict[int, Dict[str, float]]:
         return {}
     history = collections.defaultdict(dict)
     for row in run.scan_history():
-        row = {key: float(value) for key, value in row.items()
+        row = {key: value for key, value in row.items()
                if not key.startswith("_") and key != "eval_table"}
         history[row["ConsumedTokens"]].update(row)
     return history
@@ -142,10 +142,9 @@ def main(logs_root: Path, name: Optional[str], it: Optional[int], cfg: Path):
 
     for lang_group in tasks_cfg["language_groups"].values():
         for lang in lang_group:
-            assert lang in all_languages or lang == "rm", lang
+            assert lang in all_languages
 
     tasks_cfg["language_groups"]["global"] = list(all_languages)
-    tasks_cfg["language_groups"]["multilingual"] = list(all_languages - {"en"})
 
     # Grab each possible log and update wandb run.
     # First, iterate model names.

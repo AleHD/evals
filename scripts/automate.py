@@ -204,9 +204,9 @@ def sync_wandb():
 
 def main():
     submit_needed()
-    #update_hf_checkpoints()
-    #cleanup_hf_checkpoints()
-    #sync_wandb()
+    update_hf_checkpoints()
+    cleanup_hf_checkpoints()
+    sync_wandb()
 
 
 if __name__ == "__main__":
