@@ -53,6 +53,10 @@ SIZE=${SIZE:-1}
 BOD=${BOD:-false}
 LOGS_ROOT=${LOGS_ROOT:-$SCRATCH/eval-logs}
 TASKS=${TASKS:-swissai_eval}
+if [ -f "$TASKS" ]; then
+    echo "Reading task list from file: $TASKS"
+    TASKS=$(paste -sd, "$TASKS")
+fi
 export HF_HOME=${HF_HOME:-/capstor/store/cscs/swissai/infra01/hf_home/}
 GPUS_PER_NODE=4
 
@@ -64,6 +68,9 @@ printf "MODEL=$MODEL\nIT=$IT\nTOKENS_PER_ITER=$TOKENS_PER_ITER\nNAME=$NAME\nTOKE
 export MASTER_ADDR=$(hostname)
 export MASTER_PORT=25678
 export CUDA_DEVICE_MAX_CONNECTIONS=1
+export WORLD_SIZE=1
+
+# export HF_ALLOW_CODE_EVAL=1
 
 echo "Huggingface checkpoint detected!"
 CONSUMED_TOKENS=$(( IT*TOKENS_PER_ITER ))
@@ -79,14 +86,8 @@ fi
 
 echo "Consumed tokens for this iteration: $CONSUMED_TOKENS"
 
-# Determine model parallel based on size.
-if (( SIZE <= 35 )); then
-	MP=1
-elif (( SIZE <= 70 )); then
-	MP=2
-else
-	MP=4
-fi
+# Use only model parallel because of vLLM
+MP=$GPUS_PER_NODE
 echo "Using model size ~${SIZE}B, model parallel size of $MP"
 
 # Prepare logs root.
@@ -96,20 +97,24 @@ export WANDB_DIR=$RUN_ROOT
 mkdir -p $HARNESS_DIR
 echo $CONSUMED_TOKENS > $RUN_ROOT/consumed_tokens.txt
 
-export HF_HUB_OFFLINE=1
+# export HF_HUB_OFFLINE=1
+export HF_ALLOW_CODE_EVAL=1
+# export PERSPECTIVE_API_KEY="" # Uncomment if you want to use perspective API, needed for realtoxicityprompts task
 
 # Finally, run the actual evaluations.
 HF_CHECKPOINT_PATH=$MODEL
 DP=$(( GPUS_PER_NODE / MP ))
-COMMON_MODEL_ARGS="pretrained=$HF_CHECKPOINT_PATH,tokenizer_path=$TOKENIZER,context_length=4096$MAYBE_REVISION,dtype=bfloat16"
+COMMON_MODEL_ARGS="pretrained=$HF_CHECKPOINT_PATH,tokenizer=$TOKENIZER,max_length=4096$MAYBE_REVISION,dtype=bfloat16"
 if [[ $BOD = true ]]; then
 	echo "Adding BOS token."
 	COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,add_bos_token=True"
 fi
 
-# Add SGLang specific arguments.
-SGLANG_MEMORY_FRACTION=0.65
-COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,dp_size=$DP,tp_size=$MP,mem_fraction_static=$SGLANG_MEMORY_FRACTION"
+# Add vLLM specific arguments.
+export OMP_NUM_THREADS=$(( 8 * $GPUS_PER_NODE ))
+export VLLM_WORKER_MULTIPROC_METHOD=spawn
+VLLM_MEMORY_FRACTION=0.75
+COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,data_parallel_size=$DP,tensor_parallel_size=$MP,gpu_memory_utilization=$VLLM_MEMORY_FRACTION"
 
 COMMON_EVAL_ARGS=(
 	--trust_remote_code
@@ -118,9 +123,10 @@ COMMON_EVAL_ARGS=(
 	--output $HARNESS_DIR/eval_$SLURM_JOBID
 	--max_batch_size 128
 	--cache_requests true
-	--model sglang
+	--model vllm
 	--log_samples
 	--write_out
+	--confirm_run_unsafe_code
 	$LIMIT_ARGS
 )
 
