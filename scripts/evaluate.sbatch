@@ -256,7 +256,6 @@ fi
 
 COMMON_EVAL_ARGS+=(
 	--batch_size $BS
-	--tasks "$TASKS"
 	--output $HARNESS_DIR/eval_$SLURM_JOBID
 	--max_batch_size 128
 	--cache_requests true
@@ -265,16 +264,18 @@ COMMON_EVAL_ARGS+=(
 	--write_out
 	$LIMIT_ARGS
 )
+COMMON_EVAL_ARGS="${COMMON_EVAL_ARGS[@]}"
+COMMON_EVAL_ARGS="$COMMON_EVAL_ARGS --tasks=\"$TASKS\""
 if [[ $DP -eq 1 ]]; then  # Only use model parallel.
 	export WORLD_SIZE=1
-	CMD="lm_eval --model_args=$COMMON_MODEL_ARGS ${COMMON_EVAL_ARGS[@]}"
+	CMD="lm_eval --model_args=$COMMON_MODEL_ARGS $COMMON_EVAL_ARGS"
 elif (( MP > 1 )); then  # Use data parallel and model parallel.
-	CMD="accelerate launch --multi_gpu --num_processes $DP -m lm_eval --model_args=$COMMON_MODEL_ARGS,parallelize=True ${COMMON_EVAL_ARGS[@]}"
+	CMD="accelerate launch --multi_gpu --num_processes $DP -m lm_eval --model_args=$COMMON_MODEL_ARGS,parallelize=True $COMMON_EVAL_ARGS"
 else  # Only use data parallel.
-	CMD="accelerate launch -m lm_eval --model_args=$COMMON_MODEL_ARGS ${COMMON_EVAL_ARGS[@]}"
+	CMD="accelerate launch -m lm_eval --model_args=$COMMON_MODEL_ARGS $COMMON_EVAL_ARGS"
 fi
 echo "Final command: $CMD"
-$CMD
+eval $CMD
 
 # Goodbye.
 echo "Evaluation finished"
