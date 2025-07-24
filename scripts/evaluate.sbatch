@@ -2,7 +2,7 @@
 #SBATCH --account=a-infra01-1
 #SBATCH --cpus-per-task=288
 #SBATCH --gres=gpu:4
-#SBATCH --environment=/iopsstor/scratch/cscs/ahernnde/ncg_pt.toml
+#SBATCH --environment=./containers/env.toml
 #SBATCH --job-name=evaluation
 #SBATCH --mem=460000
 #SBATCH --nodes=1
@@ -53,81 +53,94 @@ IT=$2
 TOKENS_PER_ITER=$3
 NAME=$4
 BS=${BS:-"auto:20"}
-MEGATRON_BRANCH=${MEGATRON_BRANCH:-main}
+MEGATRON_BRANCH=${MEGATRON_BRANCH:-spawn}
 SIZE=${SIZE:-1}
 BOS=${BOS:-false}
 LOGS_ROOT=${LOGS_ROOT:-$SCRATCH/eval-logs}
 TASKS=${TASKS:-swissai_eval}
-TRANSFORMERS_BRANCH=${TRANSFORMERS_BRANCH:-main}
-HARNESS_BRANCH=${HARNESS_BRANCH:-granular_eval}
+TRANSFORMERS_BRANCH=${TRANSFORMERS_BRANCH:-aimv2-fix}
+HARNESS_BRANCH=${HARNESS_BRANCH:-main}
+EXTRA_PIPS=${EXTRA_PIPS:-"datasets==4.0.0"}
+BACKEND=${BACKEND:-vllm}
+VLLM_MEMORY=${VLLM_MEMORY:-0.75}
 export HF_HOME=${HF_HOME:-/capstor/store/cscs/swissai/infra01/hf_home/}
 GPUS_PER_NODE=4
 
 # Print configuration.
 echo "Configuration set:"
-printf "MODEL=$MODEL\nIT=$IT\nTOKENS_PER_ITER=$TOKENS_PER_ITER\nNAME=$NAME\nTOKENIZER=$TOKENIZER\nBS=$BS\nREVISION=$REVISION\nMEGATRON_BRANCH=$MEGATRON_BRANCH\nSIZE=$SIZE\nLIMIT=$LIMIT\nBOS=$BOS\nLOGS_ROOT=$LOGS_ROOT\nTASKS=$TASKS\n\nTRANSFORMERS_BRANCH=$TRANSFORMERS_BRANCH\nHARNESS_BRANCH=$HARNESS_BRANCH\nHF_HOME=$HF_HOME\n\n"
+printf "MODEL=$MODEL\nIT=$IT\nTOKENS_PER_ITER=$TOKENS_PER_ITER\nNAME=$NAME\nTOKENIZER=$TOKENIZER\nBS=$BS\nREVISION=$REVISION\nMEGATRON_BRANCH=$MEGATRON_BRANCH\nSIZE=$SIZE\nLIMIT=$LIMIT\nBOS=$BOS\nLOGS_ROOT=$LOGS_ROOT\nTASKS=$TASKS\n\nTRANSFORMERS_BRANCH=$TRANSFORMERS_BRANCH\nHARNESS_BRANCH=$HARNESS_BRANCH\nHF_HOME=$HF_HOME\nEXTRA_PIPS=$EXTRA_PIPS\nBACKEND=$BACKEND\nVLLM_MEMORY=$VLLM_MEMORY\n\n"
 
 # Generic envs.
 export MASTER_ADDR=$(hostname)
 export MASTER_PORT=25678
 export CUDA_DEVICE_MAX_CONNECTIONS=1
+export HF_ALLOW_CODE_EVAL=1
+export OMP_NUM_THREADS=$(( 8 * $GPUS_PER_NODE ))
+export VLLM_WORKER_MULTIPROC_METHOD=spawn
 
-# Determine CONSUMED_TOKENS.
-if [ -f $MODEL/latest_checkpointed_iteration.txt ]; then
+# Determine the CONSUMED_TOKENS based on how TOKENS_PER_ITER is specified.
+if [[ $TOKENS_PER_ITER = *,* ]]; then  # TOKENS_PER_ITER specified in a "tok0:it0,tok1:it1,tok2:" way
+	CONSUMED_TOKENS=0
+	CONSUMED_ITERS=0
+	for SUBSTR in ${TOKENS_PER_ITER//,/ }; do
+		if (( CONSUMED_ITERS < IT )); then
+			TOK_PER_ITER="$(echo $SUBSTR | cut -d':' -f1)"
+			MAX_ITER="$(echo $SUBSTR | cut -d':' -f2)"
+			if [[ $MAX_ITER = "" ]]; then
+				ITERS_THIS_BLOCK=$(( IT - CONSUMED_ITERS ))
+			elif (( IT > MAX_ITER )); then
+				ITERS_THIS_BLOCK=$(( MAX_ITER - CONSUMED_ITERS - 1 ))
+			else
+				ITERS_THIS_BLOCK=$(( IT - CONSUMED_ITERS ))
+			fi
+			CONSUMED_ITERS=$(( CONSUMED_ITERS + ITERS_THIS_BLOCK ))
+			CONSUMED_TOKENS=$(( CONSUMED_TOKENS + TOK_PER_ITER*ITERS_THIS_BLOCK ))
+		fi
+	done
+else
+	CONSUMED_TOKENS=$(( IT*TOKENS_PER_ITER ))
+fi
+
+# Determine MODEL type, download HF if needed.
+if [[ -f $MODEL/latest_checkpointed_iteration.txt ]]; then
 	echo "Megatron checkpoint detected!"
 	IS_MEGATRON=true
 	if [[ -z ${TOKENIZER+x} ]]; then
 		die "You should set TOKENIZER when using megatron checkpoints."
 	fi
-
-	# Determine the CONSUMED_TOKENS based on how TOKENS_PER_ITER is specified.
-	if [[ $TOKENS_PER_ITER = *,* ]]; then  # TOKENS_PER_ITER specified in a "tok0:it0,tok1:it1,tok2:" way
-		CONSUMED_TOKENS=0
-		CONSUMED_ITERS=0
-		for SUBSTR in ${TOKENS_PER_ITER//,/ }; do
-			if (( CONSUMED_ITERS < IT )); then
-				TOK_PER_ITER="$(echo $SUBSTR | cut -d':' -f1)"
-				MAX_ITER="$(echo $SUBSTR | cut -d':' -f2)"
-				if [[ $MAX_ITER = "" ]]; then
-					ITERS_THIS_BLOCK=$(( IT - CONSUMED_ITERS ))
-				elif (( IT > MAX_ITER )); then
-					ITERS_THIS_BLOCK=$(( MAX_ITER - CONSUMED_ITERS - 1 ))
-				else
-					ITERS_THIS_BLOCK=$(( IT - CONSUMED_ITERS ))
-				fi
-				CONSUMED_ITERS=$(( CONSUMED_ITERS + ITERS_THIS_BLOCK ))
-				CONSUMED_TOKENS=$(( CONSUMED_TOKENS + TOK_PER_ITER*ITERS_THIS_BLOCK ))
-			fi
-		done
-	else
-		CONSUMED_TOKENS=$(( IT*TOKENS_PER_ITER ))
-	fi
 else
 	echo "Huggingface checkpoint detected!"
 	IS_MEGATRON=false
-	CONSUMED_TOKENS=$(( IT*TOKENS_PER_ITER ))
-	if [ ! -z ${REVISION+x} ]; then
+	if [[ ! -z ${REVISION+x} ]]; then
 		echo "Using revision=$REVISION"
 		MAYBE_REVISION=",revision=$REVISION"
 		MAYBE_DOWNLOAD_REVISION="--revision=$REVISION"
 	fi
-	if [ -z ${TOKENIZER+x} ]; then
+	if [[ -z ${TOKENIZER+x} ]]; then
 		echo "TOKENIZER not set, using TOKENIZER=$MODEL"
 		TOKENIZER=$MODEL
 	fi
 fi
 echo "Consumed tokens for this iteration: $CONSUMED_TOKENS"
 
-# Determine model parallel based on size.
-if (( SIZE <= 35 )); then
-	MP=1
-	CONVERT_MP=1
-elif (( SIZE <= 70 )); then
-	MP=2
-	CONVERT_MP=4
+# Determine model parallel based on size and check that the backend is supported.
+if [[ $BACKEND = hf ]]; then
+	if (( SIZE <= 35 )); then
+		MP=1
+		CONVERT_MP=1
+	elif (( SIZE <= 70 )); then
+		MP=2
+		CONVERT_MP=4
+	else
+		MP=4
+		CONVERT_MP=4
+	fi
+elif [[ $BACKEND = vllm ]]; then
+	export VLLM_CACHE_ROOT=$SCRATCH/.vllm-cache
+	MP=$GPUS_PER_NODE
+	CONVERT_MP=$GPUS_PER_NODE
 else
-	MP=4
-	CONVERT_MP=4
+	die "Unknown backend $BACKEND"
 fi
 echo "Using model size ~${SIZE}B, model parallel size of $MP, conversion parallel size of $CONVERT_MP"
 
@@ -174,9 +187,13 @@ cd lm-evaluation-harness
 git checkout $HARNESS_BRANCH
 pip install -e .
 
+if [[ $EXTRA_PIPS != "" ]]; then
+	pip install $EXTRA_PIPS --no-build-isolation
+fi
+
 
 # Convert to HF if needed or pre-download the HF model.
-if [ $IS_MEGATRON = true ]; then
+if [[ $IS_MEGATRON = true ]]; then
 	# Clone megatron.
 	echo Clonning megatron.
 	cd $TEMP_REPOS
@@ -211,35 +228,46 @@ else
 	else
 		huggingface-cli download $MODEL $MAYBE_DOWNLOAD_REVISION
 	fi
-	if [ $TOKENIZER != $MODEL ]; then
+	if [[ $TOKENIZER != $MODEL ]]; then
 		echo "Why are you using a different tokenizer and model? TOKENIZER=$TOKENIZER, MODEL=$MODEL"
 		huggingface-cli download $TOKENIZER
 	fi
 fi
-export HF_HUB_OFFLINE=1
 
 # Finally, run the actual evaluations.
 DP=$(( GPUS_PER_NODE / MP ))
-COMMON_MODEL_ARGS="pretrained=$HF_CHECKPOINT_PATH,tokenizer=$TOKENIZER,max_length=4096$MAYBE_REVISION,attn_implementation=flash_attention_2,dtype=bfloat16"
+COMMON_MODEL_ARGS="pretrained=$HF_CHECKPOINT_PATH,tokenizer=$TOKENIZER,max_length=4096$MAYBE_REVISION,dtype=bfloat16"
+
+if [[ $BACKEND = hf ]]; then
+	COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,attn_implementation=flash_attention_2"
+	if [[ $DP -eq 1 ]]; then
+		COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,parallelize=True"
+	fi
+	COMMON_EVAL_ARGS=(--trust_remote_code)
+else  # vllm
+	COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,data_parallel_size=$DP,tensor_parallel_size=$MP,gpu_memory_utilization=$VLLM_MEMORY"
+	COMMON_EVAL_ARGS=(--confirm_run_unsafe_code)
+fi
+
 if [[ $BOS = true ]]; then
 	echo "Adding BOS token."
 	COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,add_bos_token=True"
 fi
-COMMON_EVAL_ARGS=(
-	--trust_remote_code
+
+COMMON_EVAL_ARGS+=(
 	--batch_size $BS
 	--tasks $TASKS
 	--output $HARNESS_DIR/eval_$SLURM_JOBID
 	--max_batch_size 128
 	--cache_requests true
-	--model hf
+	--model $BACKEND
 	--log_samples
 	--write_out
 	$LIMIT_ARGS
 )
 if [[ $DP -eq 1 ]]; then  # Only use model parallel.
 	export WORLD_SIZE=1
-	CMD="lm_eval --model_args=$COMMON_MODEL_ARGS,parallelize=True ${COMMON_EVAL_ARGS[@]}"
+	CMD="lm_eval --model_args=$COMMON_MODEL_ARGS ${COMMON_EVAL_ARGS[@]}"
 elif (( MP > 1 )); then  # Use data parallel and model parallel.
 	CMD="accelerate launch --multi_gpu --num_processes $DP -m lm_eval --model_args=$COMMON_MODEL_ARGS,parallelize=True ${COMMON_EVAL_ARGS[@]}"
 else  # Only use data parallel.
