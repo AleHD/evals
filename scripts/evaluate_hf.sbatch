@@ -14,9 +14,8 @@
 
 # Aux functions.
 usage() {
-	echo "Usage: sbatch evaluate.sbatch <model> <iteration> <tokens-per-iter> <name>"
-	echo "Runs evaluation of the specified model. The 'model' should either be a megatron checkpoint or a huggingface path/name. The script determines which one is given by looking for 'model/latest_checkpointed_iteration.txt', if it is not found a huggingface model is assumed."
-	echo "The 'iteration' and 'tokens-per-iter' is used to calculate the consumed tokens of the model."
+	echo "Usage: sbatch evaluate_hf.sbatch <model> <name>"
+	echo "Runs evaluation of the specified model. The 'model' should a huggingface path/name."
 	echo "The 'name' shall be used as an unique identifier."
 	echo "In addition of these three necessary positional arguments, you can specify the following bash environment variables. Unless explicitly stated, all of these are optional:"
 	echo " TOKENIZER: A huggingface tokenizer path/name. Needed if 'model' is a megatron checkpoint, otherwise the default will be set as the same value as 'model'."
@@ -24,7 +23,7 @@ usage() {
 	echo " REVISION: Only used in huggingface models. If set, this revision of the model will be evaluated."
 	echo " SIZE: The (approximate) size of the model in billions of parameters. Used to set model parallelism (needs to be set in larger models)."
 	echo " LIMIT: The --limit argument to pass to lm-evaluation-harness."
-	echo " BOD: Set this to 'true' if you wish to prepend the BOD token when evaluating models."
+	echo " BOS: Set this to 'true' if you wish to prepend the BOS token when evaluating models."
 	echo " LOGS_ROOT: Where are your evaluation wandb&harness logs going to."
 	echo " TASKS: Tasks to run with lm eval harness."
 	echo "For more information see the README: https://github.com/swiss-ai/evals?tab=readme-ov-file."
@@ -40,17 +39,15 @@ echo "START TIME: $(date)"
 echo "Using nodes: $SLURM_JOB_NODELIST"
 
 # Grab variables and arguments.
-if (( $# != 4 )); then
+if (( $# != 2 )); then
 	usage
 	die "Invalid usage: Invalid argument count"
 fi
 MODEL=$1
-IT=$2
-TOKENS_PER_ITER=$3
-NAME=$4
+NAME=$2
 BS=${BS:-"auto:20"}
 SIZE=${SIZE:-1}
-BOD=${BOD:-false}
+BOS=${BOS:-false}
 LOGS_ROOT=${LOGS_ROOT:-$SCRATCH/eval-logs}
 TASKS=${TASKS:-./configs/tasks_alignment.txt}
 TABLE_METRICS=${TABLE_METRICS:-./configs/tasks_alignment_main_table.txt}
@@ -62,7 +59,7 @@ fi
 
 if [ -f "$TABLE_METRICS" ]; then
 	echo "Reading table metrics from file: $TABLE_METRICS"
-	TABLE_METRICS=$(paste -sd, "$TABLE_METRICS")
+	TABLE_METRICS=$(paste -sd' ' "$TABLE_METRICS")
 fi
 
 export HF_HOME=${HF_HOME:-/capstor/store/cscs/swissai/infra01/hf_home/}
@@ -70,7 +67,7 @@ GPUS_PER_NODE=4
 
 # Print configuration.
 echo "Configuration set:"
-printf "MODEL=$MODEL\nIT=$IT\nTOKENS_PER_ITER=$TOKENS_PER_ITER\nNAME=$NAME\nTOKENIZER=$TOKENIZER\nBS=$BS\nREVISION=$REVISION\nSIZE=$SIZE\nLIMIT=$LIMIT\nBOD=$BOD\nTASKS=$TASKS\\nHF_HOME=$HF_HOME\n\n"
+printf "MODEL=$MODEL\nNAME=$NAME\nTOKENIZER=$TOKENIZER\nBS=$BS\nREVISION=$REVISION\nSIZE=$SIZE\nLIMIT=$LIMIT\nBOS=$BOS\nTASKS=$TASKS\\nHF_HOME=$HF_HOME\n\n"
 
 # Generic envs.
 export MASTER_ADDR=$(hostname)
@@ -81,7 +78,6 @@ export WORLD_SIZE=1
 # export HF_ALLOW_CODE_EVAL=1
 
 echo "Huggingface checkpoint detected!"
-CONSUMED_TOKENS=$(( IT*TOKENS_PER_ITER ))
 if [ ! -z ${REVISION+x} ]; then
     echo "Using revision=$REVISION"
     MAYBE_REVISION=",revision=$REVISION"
@@ -92,18 +88,16 @@ if [ -z ${TOKENIZER+x} ]; then
     TOKENIZER=$MODEL
 fi
 
-echo "Consumed tokens for this iteration: $CONSUMED_TOKENS"
 
 # Use only model parallel because of vLLM
 MP=$GPUS_PER_NODE
 echo "Using model size ~${SIZE}B, model parallel size of $MP"
 
 # Prepare logs root.
-RUN_ROOT=$LOGS_ROOT/$NAME/iter_$IT
+RUN_ROOT=$LOGS_ROOT/$NAME
 HARNESS_DIR=$RUN_ROOT/harness
 export WANDB_DIR=$RUN_ROOT
 mkdir -p $HARNESS_DIR
-echo $CONSUMED_TOKENS > $RUN_ROOT/consumed_tokens.txt
 
 # export HF_HUB_OFFLINE=1
 export HF_ALLOW_CODE_EVAL=1
@@ -113,7 +107,7 @@ export HF_ALLOW_CODE_EVAL=1
 HF_CHECKPOINT_PATH=$MODEL
 DP=$(( GPUS_PER_NODE / MP ))
 COMMON_MODEL_ARGS="pretrained=$HF_CHECKPOINT_PATH,tokenizer=$TOKENIZER,max_length=4096$MAYBE_REVISION,dtype=bfloat16"
-if [[ $BOD = true ]]; then
+if [[ $BOS = true ]]; then
 	echo "Adding BOS token."
 	COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,add_bos_token=True"
 fi
@@ -123,12 +117,13 @@ export OMP_NUM_THREADS=$(( 8 * $GPUS_PER_NODE ))
 export VLLM_WORKER_MULTIPROC_METHOD=spawn
 VLLM_MEMORY_FRACTION=0.75
 COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,data_parallel_size=$DP,tensor_parallel_size=$MP,gpu_memory_utilization=$VLLM_MEMORY_FRACTION"
+HARNESS_EVAL_DIR=$HARNESS_DIR/eval_$(date +%Y%m%d_%H%M%S)_$SLURM_JOBID
 
 COMMON_EVAL_ARGS=(
 	--trust_remote_code
 	--batch_size $BS
 	--tasks $TASKS
-	--output $HARNESS_DIR/eval_$SLURM_JOBID
+	--output $HARNESS_EVAL_DIR
 	--max_batch_size 128
 	--cache_requests true
 	--model vllm
@@ -150,8 +145,8 @@ echo "Evaluation finished"
 echo "Sleeping for 1 minute before uploading results to wandb..."
 sleep 60
 echo "Uploading results to wandb"
-WANDB_CMD="python scripts/update_wandb_alignment.py --entity idoh-ethz --project swissai-evals --logs_root $LOGS_ROOT --name $NAME --main_metrics $TABLE_METRICS"
-echo "Now run the following command to upload results to wandb:"
+WANDB_CMD="python $PWD/scripts/update_wandb_alignment.py --entity apertus --project swissai-evals --logs_root $HARNESS_EVAL_DIR --name $NAME --main_metrics $TABLE_METRICS"
+echo "Running command to upload results to wandb:"
 echo "$WANDB_CMD"
 srun -ul --environment=./containers/env.toml bash -c " \
     $WANDB_CMD
