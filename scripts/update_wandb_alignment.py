@@ -47,6 +47,8 @@ def upload_run(entity: str, project: str, run_id: str, main_metrics: list, logs_
         return
 
     log_data = flatten_results(results)
+    print(f"Collected {len(log_data)} metrics for {run_id}")
+    print(f"Log data keys: {list(log_data.keys())}")
 
     # Main log_data to only include keys that start with eval names from the file
     main_log_data = {}
