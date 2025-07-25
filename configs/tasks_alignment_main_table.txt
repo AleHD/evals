@@ -1,5 +1,13 @@
+mmlu/acc
+truthfulqa_gen/rougeL_acc
+bbh/exact_match
+drop/f1
+acp_val_bool/exact_match
 gsm8k/exact_match
 mathqa/acc
+humaneval/pass@1
+mbpp/pass_at_1
 ifeval/prompt_level_strict_acc
-mmlu/acc
 hellaswag/acc
+toxigen/acc
+bbq/acc
