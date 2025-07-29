@@ -26,6 +26,8 @@ usage() {
 	echo " BOS: Set this to 'true' if you wish to prepend the BOS token when evaluating models."
 	echo " LOGS_ROOT: Where are your evaluation wandb&harness logs going to."
 	echo " TASKS: Tasks to run with lm eval harness."
+	echo " WANDB_ENTITY: WandB entity name for uploading results (default: apertus)."
+	echo " WANDB_PROJECT: WandB project name for uploading results (default: swissai-evals)."
 	echo "For more information see the README: https://github.com/swiss-ai/evals?tab=readme-ov-file."
 }
 die() {
@@ -51,6 +53,8 @@ BOS=${BOS:-false}
 LOGS_ROOT=${LOGS_ROOT:-$SCRATCH/eval-logs}
 TASKS=${TASKS:-./configs/tasks_alignment.txt}
 TABLE_METRICS=${TABLE_METRICS:-./configs/tasks_alignment_main_table.txt}
+WANDB_ENTITY=${WANDB_ENTITY:-apertus}
+WANDB_PROJECT=${WANDB_PROJECT:-swissai-evals}
 
 if [ -f "$TASKS" ]; then
     echo "Reading task list from file: $TASKS"
@@ -67,7 +71,7 @@ GPUS_PER_NODE=4
 
 # Print configuration.
 echo "Configuration set:"
-printf "MODEL=$MODEL\nNAME=$NAME\nTOKENIZER=$TOKENIZER\nBS=$BS\nREVISION=$REVISION\nSIZE=$SIZE\nLIMIT=$LIMIT\nBOS=$BOS\nTASKS=$TASKS\\nHF_HOME=$HF_HOME\n\n"
+printf "MODEL=$MODEL\nNAME=$NAME\nTOKENIZER=$TOKENIZER\nBS=$BS\nREVISION=$REVISION\nSIZE=$SIZE\nLIMIT=$LIMIT\nBOS=$BOS\nTASKS=$TASKS\nWANDB_ENTITY=$WANDB_ENTITY\nWANDB_PROJECT=$WANDB_PROJECT\nHF_HOME=$HF_HOME\n\n"
 
 # Generic envs.
 export MASTER_ADDR=$(hostname)
@@ -145,7 +149,7 @@ echo "Evaluation finished"
 echo "Sleeping for 1 minute before uploading results to wandb..."
 sleep 60
 echo "Uploading results to wandb"
-WANDB_CMD="python $PWD/scripts/update_wandb_alignment.py --entity apertus --project swissai-evals --logs_root $HARNESS_EVAL_DIR --name $NAME --main_metrics $TABLE_METRICS"
+WANDB_CMD="python $PWD/scripts/update_wandb_alignment.py --entity $WANDB_ENTITY --project $WANDB_PROJECT --logs_root $HARNESS_EVAL_DIR --name $NAME --main_metrics $TABLE_METRICS"
 echo "Running command to upload results to wandb:"
 echo "$WANDB_CMD"
 srun -ul --environment=./containers/env.toml bash -c " \
