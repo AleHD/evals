@@ -4,11 +4,12 @@ bbh
 drop
 acp_bench
 gsm8k
+hendrycks_math
 mathqa
 humaneval
 mbpp
 ifeval
 hellaswag
+harmbench
 toxigen
-realtoxicityprompts
 bbq

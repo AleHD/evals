@@ -1,5 +1,5 @@
 mmlu/acc
-truthfulqa_gen/rougeL_acc
+truthfulqa_mc2/acc
 bbh/exact_match
 drop/f1
 acp_val_bool/exact_match
