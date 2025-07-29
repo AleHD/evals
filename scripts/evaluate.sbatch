@@ -65,6 +65,8 @@ BACKEND=${BACKEND:-vllm}
 VLLM_MEMORY=${VLLM_MEMORY:-0.75}
 export HF_HOME=${HF_HOME:-/capstor/store/cscs/swissai/infra01/hf_home/}
 GPUS_PER_NODE=4
+APPLY_CHAT_TEMPLATE=${APPLY_CHAT_TEMPLATE:-false}
+MAX_GEN_TOKENS=${MAX_GEN_TOKENS:-256}
 
 # Print configuration.
 echo "Configuration set:"
@@ -146,6 +148,7 @@ echo "Using model size ~${SIZE}B, model parallel size of $MP, conversion paralle
 
 # Setup temporary paths.
 TEMP_PATH_ROOT=$SCRATCH/.tmp
+mkdir -p $TEMP_PATH_ROOT
 if [ -z ${HF_TEMP_DIR+x} ]; then
 	echo "HF_TEMP_DIR not set; HF conversions will not be stored"
 	HF_TEMP_PATH=$(mktemp -d -p $TEMP_PATH_ROOT)       # To store hf conversion (if needed).
@@ -236,7 +239,11 @@ fi
 
 # Finally, run the actual evaluations.
 DP=$(( GPUS_PER_NODE / MP ))
-COMMON_MODEL_ARGS="pretrained=$HF_CHECKPOINT_PATH,tokenizer=$TOKENIZER,max_length=4096$MAYBE_REVISION,dtype=bfloat16"
+COMMON_MODEL_ARGS="pretrained=$HF_CHECKPOINT_PATH,tokenizer=$TOKENIZER$MAYBE_REVISION,dtype=bfloat16"
+
+if [[ ! -z $MAX_LENGTH ]]; then
+	COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,max_length=$MAX_LENGTH"
+fi
 
 if [[ $BACKEND = hf ]]; then
 	COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,attn_implementation=flash_attention_2"
@@ -263,8 +270,17 @@ COMMON_EVAL_ARGS+=(
 	--model $BACKEND
 	--log_samples
 	--write_out
-	$LIMIT_ARGS
+	--gen_kwargs max_gen_toks=$MAX_GEN_TOKENS
 )
+
+if [[ $APPLY_CHAT_TEMPLATE = true ]]; then
+	COMMON_EVAL_ARGS+=(--apply_chat_template)
+fi
+
+if [[ ! -z ${LIMIT} ]]; then
+	COMMON_EVAL_ARGS+=(--limit $LIMIT)
+fi
+
 if [[ $DP -eq 1 ]]; then  # Only use model parallel.
 	export WORLD_SIZE=1
 	CMD="lm_eval --model_args=$COMMON_MODEL_ARGS ${COMMON_EVAL_ARGS[@]}"
