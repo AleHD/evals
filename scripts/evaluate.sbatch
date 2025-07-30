@@ -66,7 +66,11 @@ VLLM_MEMORY=${VLLM_MEMORY:-0.75}
 export HF_HOME=${HF_HOME:-/capstor/store/cscs/swissai/infra01/hf_home/}
 GPUS_PER_NODE=4
 APPLY_CHAT_TEMPLATE=${APPLY_CHAT_TEMPLATE:-false}
-MAX_GEN_TOKENS=${MAX_GEN_TOKENS:-256}
+
+# optional eval arguments
+MAX_LENGTH=${MAX_LENGTH:-""}
+MAX_NEW_TOKENS=${MAX_NEW_TOKENS:-""}
+LIMIT=${LIMIT:-""}
 
 # Print configuration.
 echo "Configuration set:"
@@ -270,7 +274,6 @@ COMMON_EVAL_ARGS+=(
 	--model $BACKEND
 	--log_samples
 	--write_out
-	--gen_kwargs max_gen_toks=$MAX_GEN_TOKENS
 )
 
 if [[ $APPLY_CHAT_TEMPLATE = true ]]; then
@@ -279,6 +282,10 @@ fi
 
 if [[ ! -z ${LIMIT} ]]; then
 	COMMON_EVAL_ARGS+=(--limit $LIMIT)
+fi
+
+if [[ ! -z $MAX_GEN_TOKENS ]]; then
+	COMMON_EVAL_ARGS+=(--gen_kwargs max_gen_toks=$MAX_GEN_TOKENS)
 fi
 
 if [[ $DP -eq 1 ]]; then  # Only use model parallel.
