@@ -130,7 +130,7 @@ export VLLM_WORKER_MULTIPROC_METHOD=spawn
 VLLM_MEMORY_FRACTION=0.75
 COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,data_parallel_size=$DP,tensor_parallel_size=$MP,gpu_memory_utilization=$VLLM_MEMORY_FRACTION"
 
-if [[ ! -z $MAX_LENGTH ]]; then
+if [[ ! -n $MAX_LENGTH ]]; then
 	COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,max_length=$MAX_LENGTH"
 fi
 
@@ -153,11 +153,11 @@ if [[ $APPLY_CHAT_TEMPLATE = true ]]; then
 	COMMON_EVAL_ARGS+=(--apply_chat_template)
 fi
 
-if [[ ! -z ${LIMIT} ]]; then
+if [[ ! -n ${LIMIT} ]]; then
 	COMMON_EVAL_ARGS+=(--limit $LIMIT)
 fi
 
-if [[ ! -z $MAX_GEN_TOKENS ]]; then
+if [[ ! -n $MAX_GEN_TOKENS ]]; then
 	COMMON_EVAL_ARGS+=(--gen_kwargs max_gen_toks=$MAX_GEN_TOKENS)
 fi
 
