@@ -22,7 +22,9 @@ usage() {
 	echo " BS: Batch size."
 	echo " REVISION: Only used in huggingface models. If set, this revision of the model will be evaluated."
 	echo " SIZE: The (approximate) size of the model in billions of parameters. Used to set model parallelism (needs to be set in larger models)."
-	echo " LIMIT: The --limit argument to pass to lm-evaluation-harness."
+	echo " LIMIT: The --limit argument to pass to lm-evaluation-harness. By default, it is unset."
+	echo " MAX_LENGTH: The maximum length of the input sequence to the model. By default, it is unset."
+	echo " MAX_NEW_TOKENS: The maximum number of new tokens to generate. By default, it is unset."
 	echo " BOS: Set this to 'true' if you wish to prepend the BOS token when evaluating models."
 	echo " LOGS_ROOT: Where are your evaluation wandb&harness logs going to."
 	echo " TASKS: Tasks to run with lm eval harness."
@@ -55,6 +57,12 @@ TASKS=${TASKS:-./configs/tasks_alignment.txt}
 TABLE_METRICS=${TABLE_METRICS:-./configs/tasks_alignment_main_table.txt}
 WANDB_ENTITY=${WANDB_ENTITY:-apertus}
 WANDB_PROJECT=${WANDB_PROJECT:-swissai-evals}
+APPLY_CHAT_TEMPLATE=${APPLY_CHAT_TEMPLATE:-true}
+
+# optional eval arguments
+MAX_LENGTH=${MAX_LENGTH:-""}
+MAX_NEW_TOKENS=${MAX_NEW_TOKENS:-""}
+LIMIT=${LIMIT:-""}
 
 if [ -f "$TASKS" ]; then
     echo "Reading task list from file: $TASKS"
@@ -121,6 +129,11 @@ export OMP_NUM_THREADS=$(( 8 * $GPUS_PER_NODE ))
 export VLLM_WORKER_MULTIPROC_METHOD=spawn
 VLLM_MEMORY_FRACTION=0.75
 COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,data_parallel_size=$DP,tensor_parallel_size=$MP,gpu_memory_utilization=$VLLM_MEMORY_FRACTION"
+
+if [[ ! -z $MAX_LENGTH ]]; then
+	COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,max_length=$MAX_LENGTH"
+fi
+
 HARNESS_EVAL_DIR=$HARNESS_DIR/eval_$(date +%Y%m%d_%H%M%S)_$SLURM_JOBID
 
 COMMON_EVAL_ARGS=(
@@ -134,8 +147,19 @@ COMMON_EVAL_ARGS=(
 	--log_samples
 	--write_out
 	--confirm_run_unsafe_code
-	$LIMIT_ARGS
 )
+
+if [[ $APPLY_CHAT_TEMPLATE = true ]]; then
+	COMMON_EVAL_ARGS+=(--apply_chat_template)
+fi
+
+if [[ ! -z ${LIMIT} ]]; then
+	COMMON_EVAL_ARGS+=(--limit $LIMIT)
+fi
+
+if [[ ! -z $MAX_GEN_TOKENS ]]; then
+	COMMON_EVAL_ARGS+=(--gen_kwargs max_gen_toks=$MAX_GEN_TOKENS)
+fi
 
 CMD="lm_eval --model_args=$COMMON_MODEL_ARGS ${COMMON_EVAL_ARGS[@]}"
 
