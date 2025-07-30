@@ -1,0 +1,10 @@
+mmlu_multilingual/acc
+hellaswag_multilingual/acc
+arc_challenge_multilingual/acc
+winogrande_multilingual/acc
+truthfulqa_multilingual/acc
+gsm8k_multilingual/exact_match
+humaneval_multilingual/pass@1
+mbpp_multilingual/pass_at_1
+toxigen_multilingual/acc
+bbq_multilingual/acc

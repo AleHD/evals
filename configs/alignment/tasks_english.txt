@@ -1,4 +1,4 @@
-mmlu
+mmlu_flan_cot_zeroshot
 truthfulqa
 bbh
 drop
@@ -10,5 +10,6 @@ humaneval
 mbpp
 ifeval
 hellaswag
+harmbench
 toxigen
 bbq

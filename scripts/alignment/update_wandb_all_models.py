@@ -81,7 +81,7 @@ ALL_MODELS = [
 
 def load_main_metrics() -> List[str]:
     """Load main metrics from config file."""
-    config_path = Path(__file__).parent.parent.parent / "configs" / "tasks_alignment_main_table.txt"
+    config_path = Path(__file__).parent.parent.parent / "configs" / "alignment" / "tasks_english_main_table.txt"
     with open(config_path, 'r') as f:
         return [line.strip() for line in f if line.strip()]
 

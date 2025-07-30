@@ -123,5 +123,5 @@ More information on the task hierarchy refer to https://github.com/swiss-ai/lm-e
 ## About `evaluate_hf.sbatch`
 This file is here to keep things self contained, it will work great with the `Dockerfile` and `env.toml ` specified in the `containers` folder, only for huggingface models though. Use this to ensure stable HF evals if the other `evaluate.sbatch` fails. Supports `vllm`.
 ```bash
-TASKS=configs/tasks_alignment.txt bash examples/eval_apertus_8b_hf.sh
+TASKS=configs/alignment/tasks_english.txt bash examples/eval_apertus_8b_hf.sh
 ```

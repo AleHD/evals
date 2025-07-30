@@ -53,8 +53,8 @@ BS=${BS:-"auto:20"}
 SIZE=${SIZE:-1}
 BOS=${BOS:-false}
 LOGS_ROOT=${LOGS_ROOT:-$SCRATCH/eval-logs}
-TASKS=${TASKS:-./configs/tasks_alignment.txt}
-TABLE_METRICS=${TABLE_METRICS:-./configs/tasks_alignment_main_table.txt}
+TASKS=${TASKS:-./configs/alignment/tasks_english.txt}
+TABLE_METRICS=${TABLE_METRICS:-./configs/alignment/tasks_english_main_table.txt}
 WANDB_ENTITY=${WANDB_ENTITY:-apertus}
 WANDB_PROJECT=${WANDB_PROJECT:-swissai-evals}
 APPLY_CHAT_TEMPLATE=${APPLY_CHAT_TEMPLATE:-true}
@@ -153,18 +153,23 @@ if [[ $APPLY_CHAT_TEMPLATE = true ]]; then
 	COMMON_EVAL_ARGS+=(--apply_chat_template)
 fi
 
-if [[ ! -n ${LIMIT} ]]; then
+if [[ -n ${LIMIT} ]]; then
 	COMMON_EVAL_ARGS+=(--limit $LIMIT)
 fi
 
-if [[ ! -n $MAX_GEN_TOKENS ]]; then
+if [[ -n $MAX_GEN_TOKENS ]]; then
 	COMMON_EVAL_ARGS+=(--gen_kwargs max_gen_toks=$MAX_GEN_TOKENS)
 fi
 
+INSTALL_CMD="pip install -v --no-cache-dir --no-build-isolation --no-deps -U \
+    \"lm-eval[vllm] @ git+https://github.com/swiss-ai/lm-evaluation-harness.git@main\""
+
 CMD="lm_eval --model_args=$COMMON_MODEL_ARGS ${COMMON_EVAL_ARGS[@]}"
 
+echo "Installation command: $INSTALL_CMD"
 echo "Final command: $CMD"
 srun -ul --environment=./containers/env.toml bash -c " \
+    $INSTALL_CMD
     $CMD
 "
 
@@ -173,7 +178,7 @@ echo "Evaluation finished"
 echo "Sleeping for 1 minute before uploading results to wandb..."
 sleep 60
 echo "Uploading results to wandb"
-WANDB_CMD="python $PWD/scripts/alignment/update_wandb_alignment.py --entity $WANDB_ENTITY --project $WANDB_PROJECT --logs_root $HARNESS_EVAL_DIR --name $NAME --main_metrics $TABLE_METRICS"
+WANDB_CMD="cd $PWD && python -m scripts.alignment.update_wandb_alignment --entity $WANDB_ENTITY --project $WANDB_PROJECT --logs_root $HARNESS_EVAL_DIR --name $NAME --main_metrics $TABLE_METRICS"
 echo "Running command to upload results to wandb:"
 echo "$WANDB_CMD"
 srun -ul --environment=./containers/env.toml bash -c " \
