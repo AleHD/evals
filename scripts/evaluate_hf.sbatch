@@ -149,7 +149,7 @@ echo "Evaluation finished"
 echo "Sleeping for 1 minute before uploading results to wandb..."
 sleep 60
 echo "Uploading results to wandb"
-WANDB_CMD="python $PWD/scripts/update_wandb_alignment.py --entity $WANDB_ENTITY --project $WANDB_PROJECT --logs_root $HARNESS_EVAL_DIR --name $NAME --main_metrics $TABLE_METRICS"
+WANDB_CMD="python $PWD/scripts/alignment/update_wandb_alignment.py --entity $WANDB_ENTITY --project $WANDB_PROJECT --logs_root $HARNESS_EVAL_DIR --name $NAME --main_metrics $TABLE_METRICS"
 echo "Running command to upload results to wandb:"
 echo "$WANDB_CMD"
 srun -ul --environment=./containers/env.toml bash -c " \

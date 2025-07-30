@@ -7,7 +7,7 @@ gsm8k/exact_match
 mathqa/acc
 humaneval/pass@1
 mbpp/pass_at_1
-ifeval/prompt_level_strict_acc
+ifeval/prompt_level_loose_acc
 hellaswag/acc
 toxigen/acc
 bbq/acc
