@@ -118,7 +118,7 @@ export HF_ALLOW_CODE_EVAL=1
 # Finally, run the actual evaluations.
 HF_CHECKPOINT_PATH=$MODEL
 DP=$(( GPUS_PER_NODE / MP ))
-COMMON_MODEL_ARGS="pretrained=$HF_CHECKPOINT_PATH,tokenizer=$TOKENIZER,max_length=4096$MAYBE_REVISION,dtype=bfloat16"
+COMMON_MODEL_ARGS="pretrained=$HF_CHECKPOINT_PATH,tokenizer=$TOKENIZER$MAYBE_REVISION,dtype=bfloat16"
 if [[ $BOS = true ]]; then
 	echo "Adding BOS token."
 	COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,add_bos_token=True"
@@ -130,7 +130,7 @@ export VLLM_WORKER_MULTIPROC_METHOD=spawn
 VLLM_MEMORY_FRACTION=0.75
 COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,data_parallel_size=$DP,tensor_parallel_size=$MP,gpu_memory_utilization=$VLLM_MEMORY_FRACTION"
 
-if [[ ! -n $MAX_LENGTH ]]; then
+if [[ -n $MAX_LENGTH ]]; then
 	COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,max_length=$MAX_LENGTH"
 fi
 
