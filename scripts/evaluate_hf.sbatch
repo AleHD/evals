@@ -60,7 +60,7 @@ WANDB_PROJECT=${WANDB_PROJECT:-swissai-evals}
 APPLY_CHAT_TEMPLATE=${APPLY_CHAT_TEMPLATE:-true}
 
 # optional eval arguments
-MAX_LENGTH=${MAX_LENGTH:-""}
+MAX_LENGTH=${MAX_LENGTH:-4096}
 MAX_NEW_TOKENS=${MAX_NEW_TOKENS:-""}
 LIMIT=${LIMIT:-""}
 
@@ -128,11 +128,7 @@ fi
 export OMP_NUM_THREADS=$(( 8 * $GPUS_PER_NODE ))
 export VLLM_WORKER_MULTIPROC_METHOD=spawn
 VLLM_MEMORY_FRACTION=0.75
-COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,data_parallel_size=$DP,tensor_parallel_size=$MP,gpu_memory_utilization=$VLLM_MEMORY_FRACTION"
-
-if [[ -n $MAX_LENGTH ]]; then
-	COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,max_length=$MAX_LENGTH"
-fi
+COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,data_parallel_size=$DP,tensor_parallel_size=$MP,gpu_memory_utilization=$VLLM_MEMORY_FRACTION,max_length=$MAX_LENGTH"
 
 HARNESS_EVAL_DIR=$HARNESS_DIR/eval_$(date +%Y%m%d_%H%M%S)_$SLURM_JOBID
 
@@ -142,7 +138,6 @@ COMMON_EVAL_ARGS=(
 	--tasks $TASKS
 	--output $HARNESS_EVAL_DIR
 	--max_batch_size 128
-	--cache_requests true
 	--model vllm
 	--log_samples
 	--write_out
@@ -161,7 +156,8 @@ if [[ -n $MAX_GEN_TOKENS ]]; then
 	COMMON_EVAL_ARGS+=(--gen_kwargs max_gen_toks=$MAX_GEN_TOKENS)
 fi
 
-INSTALL_CMD="pip install -v --no-cache-dir --no-build-isolation --no-deps -U \
+INSTALL_CMD="pip install -v --no-cache-dir --no-build-isolation --no-deps --force-reinstall -U \
+	datasketch \
     \"lm-eval[vllm] @ git+https://github.com/swiss-ai/lm-evaluation-harness.git@main\""
 
 CMD="lm_eval --model_args=$COMMON_MODEL_ARGS ${COMMON_EVAL_ARGS[@]}"
@@ -169,7 +165,6 @@ CMD="lm_eval --model_args=$COMMON_MODEL_ARGS ${COMMON_EVAL_ARGS[@]}"
 echo "Installation command: $INSTALL_CMD"
 echo "Final command: $CMD"
 srun -ul --environment=./containers/env.toml bash -c " \
-    $INSTALL_CMD
     $CMD
 "
 
