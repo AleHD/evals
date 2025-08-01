@@ -6,78 +6,14 @@ This script goes through all existing runs in the log directory and updates a W&
 
 from pathlib import Path
 from argparse import ArgumentParser
-from typing import Dict, List
+from typing import List
 
 from .wandb_alignment_utils import (
-    collect_results, 
-    flatten_results, 
     find_all_eval_dirs, 
-    upload_multi_model_results
+    upload_multi_model_results,
+    create_model_evaluation_from_results
 )
-
-
-# Define all models that we want to process
-ALL_MODELS = [
-    # Apertus RLVR reasoning models
-    "Apertus3-8B_iter_1678000-tulu3-sft-RLVR-105",
-    "Apertus3-8B_iter_1678000-tulu3-sft-RLVR-450",
-    "Apertus3-8B_iter_1678000-tulu3-sft-RLVR-560",
-    
-    # Apertus base pretrained models
-    "Apertus8B-tokens7.04T-it1678000",
-    "Apertus8B-tokens7.4T-it1728000",
-    "Apertus70B-tokens15T-it1155828",
-    
-    # Apertus SFT trained models
-    "Apertus-8B-SFT",
-    "Apertus-70B-15T-it1155828--Tulu3-SFT",
-    "Apertus-8B-7.04T-it1678000--Tulu3-SFT-tulu",
-    "Apertus-8B-7.04T-it1678000--Tulu3-SFT-tulu_special_token",
-    "Apertus8B-tokens7.4T-it1728000-ademamix-swissai-tulu-3-sft-0225",
-    
-    # EuroLLM models
-    "EuroLLM-9B",
-    "EuroLLM-22B-Preview",
-    
-    # Gemma models
-    "gemma-3-4b-it",
-    "gemma-3-12b-it",
-    "gemma-3-27b-it",
-    
-    # K2 models
-    "K2-Chat",
-    
-    # Llama models
-    "Llama-3.1-8B-Instruct",
-    "Llama-3.3-70B-Instruct",
-    
-    # OLMo models (base)
-    "OLMo-2-0325-32B",
-    "OLMo-2-1124-7B-Instruct",
-    
-    # OLMo models (fine-tuned variants)
-    "OLMo-2-0325-32B-DPO",
-    "OLMo-2-0325-32B-Instruct",
-    "OLMo-2-0325-32B-SFT",
-    
-    # Qwen 2.5 models
-    "Qwen2.5-7B",
-    "Qwen2.5-7B-Instruct",
-    "Qwen2.5-14B-Instruct",
-    "Qwen2.5-32B-Instruct",
-    "Qwen2.5-72B-Instruct",
-    
-    # Qwen 3 models
-    "Qwen3-1.7B",
-    "Qwen3-4B",
-    "Qwen3-8B",
-    "Qwen3-14B",
-    "Qwen3-32B",
-    
-    # SmolLM models
-    "SmolLM3-3B",
-]
-
+from .data_structures import ModelEvaluation, Task
 
 def load_main_metrics() -> List[str]:
     """Load main metrics from config file."""
@@ -86,33 +22,65 @@ def load_main_metrics() -> List[str]:
         return [line.strip() for line in f if line.strip()]
 
 
-def scan_all_models(logs_root: Path) -> Dict[str, Dict[str, float]]:
-    """Scan all models and collect their results."""
-    all_results = {}
+def scan_all_models(logs_root: Path) -> List[ModelEvaluation]:
+    """Scan all models and create ModelEvaluation objects."""
+    model_evaluations = []
     print(f"Scanning logs in: {logs_root}")
 
-    # Process models that are in our defined list
+    # Process all model directories found in logs_root
     processed_count = 0
-    for model_name in ALL_MODELS:
+    for model_dir in sorted(logs_root.iterdir()):
+        
+        model_name = model_dir.name
         print(f"Processing {model_name}")
         eval_dirs = find_all_eval_dirs(logs_root, model_name)
         
-        # Collect results from all directories, newer ones overwrite older ones
-        combined_results = {}
-        for eval_dir in eval_dirs:
-            results = collect_results(eval_dir)
-            flattened = flatten_results(results)
-            
-            # Update combined results, newer metrics overwrite older ones
-            combined_results.update(flattened)
-            print(f"  + {eval_dir.name}: {len(flattened)} metrics")
+        # Use all evaluation directories and merge their results (old to new)
+        print(f"  Found {len(eval_dirs)} evaluation directories, merging results...")
         
-        all_results[model_name] = combined_results
+        # Merge all evaluation directories into a single ModelEvaluation
+        all_tasks_dict = {}
+        
+        for eval_dir in eval_dirs:
+            print(f"    + Processing {eval_dir.name}")
+            
+            # Create evaluation for this directory
+            temp_eval = create_model_evaluation_from_results(model_name, eval_dir, max_samples=5)
+            
+            # Merge tasks into combined dictionary
+            for task in temp_eval.tasks:
+                if task.task_name not in all_tasks_dict:
+                    all_tasks_dict[task.task_name] = {"metrics": [], "samples": []}
+                
+                # Add metrics (newer ones will be added last, effectively overwriting in final task)
+                all_tasks_dict[task.task_name]["metrics"].extend(task.metrics)
+                # Add samples
+                all_tasks_dict[task.task_name]["samples"].extend(task.samples)
+        
+        # Create final merged tasks (remove duplicate metrics, keep latest)
+        merged_tasks = []
+        for task_name, data in all_tasks_dict.items():
+            # Remove duplicate metrics (keep latest by name)
+            unique_metrics = {}
+            for metric in data["metrics"]:
+                unique_metrics[metric.name] = metric  # Later metrics overwrite earlier ones
+            
+            merged_tasks.append(Task(
+                task_name=task_name,
+                metrics=list(unique_metrics.values()),
+                samples=data["samples"]  # Keep all samples
+            ))
+        
+        # Create final ModelEvaluation
+        model_eval = ModelEvaluation(model_name=model_name, tasks=merged_tasks)
+        model_evaluations.append(model_eval)
         processed_count += 1
-        print(f"  ✓ Total: {len(combined_results)} metrics")
+        
+        # Print summary
+        print(f"  ✓ Total: {model_eval.total_metrics_count} metrics, {model_eval.total_samples_count} samples across {len(model_eval.tasks)} tasks")
     
     print(f"Successfully processed {processed_count} models")
-    return all_results
+    return model_evaluations
 
 
 def main():
@@ -132,21 +100,21 @@ def main():
         args.main_metrics = load_main_metrics()
     
     # Scan all models
-    all_results = scan_all_models(args.logs_root)
+    model_evaluations = scan_all_models(args.logs_root)
     
     # Print summary
-    print(f"\n=== SUMMARY ===")
-    print(f"Found results for {len(all_results)} models:")
-    for model_name, metrics in all_results.items():
-        available_main_metrics = sum(1 for metric in args.main_metrics if metric in metrics)
-        print(f"  {model_name}: {len(metrics)} total metrics, {available_main_metrics}/{len(args.main_metrics)} main metrics")
+    print("\n=== SUMMARY ===")
+    print(f"Found results for {len(model_evaluations)} models:")
+    for model_eval in model_evaluations:
+        available_main_metrics = sum(1 for metric in args.main_metrics if metric in model_eval.get_flattened_metrics())
+        print(f"  {model_eval.model_name}: {model_eval.total_metrics_count} total metrics, {available_main_metrics}/{len(args.main_metrics)} main metrics, {model_eval.total_samples_count} samples")
     
     if args.dry_run:
         print("\nDry run completed. No data uploaded to W&B.")
         return
     
-    # Upload to W&B
-    upload_multi_model_results(args.entity, args.project, all_results, args.main_metrics)
+    # Upload to W&B using structured approach
+    upload_multi_model_results(args.entity, args.project, model_evaluations, args.main_metrics)
 
 
 if __name__ == "__main__":

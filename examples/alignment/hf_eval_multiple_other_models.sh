@@ -19,13 +19,16 @@ declare -A MODEL_CHECKPOINTS=(
     ["Llama-3.3-70B-Instruct"]="meta-llama/Llama-3.3-70B-Instruct"
     
     # OLMo models (base)
+    ["OLMo-2-1124-7B"]="allenai/OLMo-2-1124-7B"
     ["OLMo-2-0325-32B"]="allenai/OLMo-2-0325-32B"
-    ["OLMo-2-1124-7B-Instruct"]="allenai/OLMo-2-1124-7B-Instruct"
     
     # OLMo models (fine-tuned variants)
+    ["OLMo-2-1124-7B-SFT"]="allenai/OLMo-2-1124-7B-SFT"
+    ["OLMo-2-1124-7B-DPO"]="allenai/OLMo-2-1124-7B-DPO"
+    ["OLMo-2-1124-7B-Instruct"]="allenai/OLMo-2-1124-7B-Instruct"
+    ["OLMo-2-0325-32B-SFT"]="allenai/OLMo-2-0325-32B-SFT"
     ["OLMo-2-0325-32B-DPO"]="allenai/OLMo-2-0325-32B-DPO"
     ["OLMo-2-0325-32B-Instruct"]="allenai/OLMo-2-0325-32B-Instruct"
-    ["OLMo-2-0325-32B-SFT"]="allenai/OLMo-2-0325-32B-SFT"
     
     # Qwen 2.5 models
     ["Qwen2.5-7B"]="Qwen/Qwen2.5-7B"
@@ -45,6 +48,8 @@ declare -A MODEL_CHECKPOINTS=(
     ["SmolLM3-3B"]="HuggingFaceTB/SmolLM3-3B"
 )
 
+export WANDB_ENTITY=apertus
+export WANDB_PROJECT=swissai-evals-v0.0.3
 # Launch evaluation jobs for each model
 echo "Launching evaluation jobs for ${#MODEL_CHECKPOINTS[@]} non-Apertus models..."
 job_count=0

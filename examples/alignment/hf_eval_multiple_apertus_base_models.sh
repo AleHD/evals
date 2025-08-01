@@ -12,7 +12,7 @@ declare -A MODEL_CHECKPOINTS=(
 )
 
 export WANDB_ENTITY=apertus
-export WANDB_PROJECT=swissai-evals
+export WANDB_PROJECT=swissai-evals-v0.0.3
 # Launch evaluation jobs for each model
 echo "Launching evaluation jobs for ${#MODEL_CHECKPOINTS[@]} models..."
 job_count=0

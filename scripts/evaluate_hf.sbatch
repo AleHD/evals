@@ -52,7 +52,7 @@ NAME=$2
 BS=${BS:-"auto:20"}
 SIZE=${SIZE:-1}
 BOS=${BOS:-false}
-LOGS_ROOT=${LOGS_ROOT:-$SCRATCH/eval-logs}
+LOGS_ROOT=${LOGS_ROOT:-/capstor/store/cscs/swissai/infra01/eval-logs}
 TASKS=${TASKS:-./configs/alignment/tasks_english.txt}
 TABLE_METRICS=${TABLE_METRICS:-./configs/alignment/tasks_english_main_table.txt}
 WANDB_ENTITY=${WANDB_ENTITY:-apertus}
@@ -106,7 +106,7 @@ MP=$GPUS_PER_NODE
 echo "Using model size ~${SIZE}B, model parallel size of $MP"
 
 # Prepare logs root.
-RUN_ROOT=$LOGS_ROOT/$NAME
+RUN_ROOT=$LOGS_ROOT/$WANDB_ENTITY/$WANDB_PROJECT/$NAME
 HARNESS_DIR=$RUN_ROOT/harness
 export WANDB_DIR=$RUN_ROOT
 mkdir -p $HARNESS_DIR
@@ -128,7 +128,7 @@ fi
 export OMP_NUM_THREADS=$(( 8 * $GPUS_PER_NODE ))
 export VLLM_WORKER_MULTIPROC_METHOD=spawn
 VLLM_MEMORY_FRACTION=0.75
-COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,data_parallel_size=$DP,tensor_parallel_size=$MP,gpu_memory_utilization=$VLLM_MEMORY_FRACTION,max_length=$MAX_LENGTH"
+COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,data_parallel_size=$DP,tensor_parallel_size=$MP,gpu_memory_utilization=$VLLM_MEMORY_FRACTION,max_length=$MAX_LENGTH,enable_thinking=False"
 
 HARNESS_EVAL_DIR=$HARNESS_DIR/eval_$(date +%Y%m%d_%H%M%S)_$SLURM_JOBID
 
@@ -165,6 +165,7 @@ CMD="lm_eval --model_args=$COMMON_MODEL_ARGS ${COMMON_EVAL_ARGS[@]}"
 echo "Installation command: $INSTALL_CMD"
 echo "Final command: $CMD"
 srun -ul --environment=./containers/env.toml bash -c " \
+	$INSTALL_CMD
     $CMD
 "
 

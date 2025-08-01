@@ -1,4 +1,4 @@
-mmlu/acc
+mmlu_flan_cot_zeroshot/exact_match
 truthfulqa_mc2/acc
 bbh/exact_match
 drop/f1

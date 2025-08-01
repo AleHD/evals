@@ -1,20 +1,19 @@
 from pathlib import Path
 from argparse import ArgumentParser
 
-from .wandb_alignment_utils import upload_multi_model_results, collect_results, flatten_results
+from .wandb_alignment_utils import upload_multi_model_results, create_model_evaluation_from_results
 
 
 def main(entity: str, project: str, name: str, main_metrics: list, logs_root: Path):
     print(f"Uploading {name}, iteration: {logs_root.name}")
     
-    results = collect_results(logs_root)
-    log_data = flatten_results(results)
-    print(f"Collected {len(log_data)} metrics for {name}")
-    print(f"Log data keys: {list(log_data.keys())}")
+    # Create ModelEvaluation directly from results and samples
+    model_eval = create_model_evaluation_from_results(name, logs_root, max_samples=10)
+    print(f"Created evaluation with {model_eval.total_metrics_count} metrics and {model_eval.total_samples_count} samples")
+    print(f"Tasks: {model_eval.task_names}")
     
-    # Use upload_multi_model_results with a single model
-    single_model_results = {name: log_data}
-    upload_multi_model_results(entity, project, single_model_results, main_metrics)
+    # Upload using the new structured approach
+    upload_multi_model_results(entity, project, [model_eval], main_metrics)
 
 if __name__ == "__main__":
     parser = ArgumentParser()
