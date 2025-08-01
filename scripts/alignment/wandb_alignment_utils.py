@@ -40,14 +40,14 @@ def create_model_evaluation_from_results(model_name: str, eval_dir: Path, max_sa
         
         # Load corresponding samples for this task using exact filename
         task_samples = []
-        sample_files = list(eval_dir.glob(f"**/samples_{task_name}_{timestamp}.jsonl"))
-        assert len(sample_files) == 1, f"Expected exactly one sample file for task {task_name}, found {len(sample_files)}"
-        with open(sample_files[0], 'r') as f:
-            for i, line in enumerate(f):
-                if i >= max_samples:
-                    break
-                sample_data = json.loads(line.strip())
-                task_samples.append(Sample(sample_data=sample_data))
+        # There should be only one sample file per task but for aggregation tasks there will zero
+        for sample_file in eval_dir.glob(f"**/samples_{task_name}_{timestamp}.jsonl"):
+            with open(sample_file, 'r') as f:
+                for i, line in enumerate(f):
+                    if i >= max_samples:
+                        break
+                    sample_data = json.loads(line.strip())
+                    task_samples.append(Sample(sample_data=sample_data))
         
         # Create Task object immediately
         tasks.append(Task(
@@ -121,8 +121,11 @@ def _upload_to_wandb_with_model_eval(entity: str, project: str, model_eval: Mode
                 continue
 
             samples_table = upload_structured_samples_as_table(task)
-            run.log({f"samples/{model_eval.model_name}/{task.task_name}": samples_table})
-            
+            try:
+                run.log({f"samples/{model_eval.model_name}/{task.task_name}": samples_table})
+            except Exception as e:
+                print(f"  - Failed to log samples for task {task.task_name}: {e}")
+
         print(f"Logged to WandB for {model_eval.model_name}: {len(log_data)} entries")
 
 

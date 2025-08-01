@@ -10,7 +10,8 @@ def main(entity: str, project: str, name: str, main_metrics: list, logs_root: Pa
     # Create ModelEvaluation directly from results and samples
     model_eval = create_model_evaluation_from_results(name, logs_root, max_samples=10)
     print(f"Created evaluation with {model_eval.total_metrics_count} metrics and {model_eval.total_samples_count} samples")
-    print(f"Tasks: {model_eval.task_names}")
+    for task in model_eval.tasks:
+        print(",".join([f"{task.task_name}/{metric.name}" for metric in task.metrics]))
     
     # Upload using the new structured approach
     upload_multi_model_results(entity, project, [model_eval], main_metrics)
