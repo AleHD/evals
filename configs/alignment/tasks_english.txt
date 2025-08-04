@@ -3,11 +3,11 @@ truthfulqa
 bbh
 drop
 acp_bench
-gsm8k
+gsm8k_cot
 hendrycks_math
 mathqa
-humaneval
-mbpp
+humaneval_instruct
+mbpp_instruct
 ifeval
 hellaswag
 harmbench

@@ -3,11 +3,13 @@ truthfulqa_mc2/acc
 bbh/exact_match
 drop/f1
 acp_val_bool/exact_match
-gsm8k/exact_match
+gsm8k_cot/exact_match
 mathqa/acc
-humaneval/pass@10
-mbpp/pass_at_1
+hendrycks_math/exact_match
+humaneval_instruct/pass@10
+mbpp_instruct/pass_at_1
 ifeval/prompt_level_loose_acc
 hellaswag/acc
+harmbench/score
 toxigen/acc
 bbq/acc
