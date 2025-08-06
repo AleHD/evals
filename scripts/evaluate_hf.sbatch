@@ -61,7 +61,7 @@ APPLY_CHAT_TEMPLATE=${APPLY_CHAT_TEMPLATE:-true}
 
 # optional eval arguments
 MAX_LENGTH=${MAX_LENGTH:-4096}
-MAX_NEW_TOKENS=${MAX_NEW_TOKENS:-""}
+MAX_NEW_TOKENS=${MAX_NEW_TOKENS:-2048}
 LIMIT=${LIMIT:-""}
 
 if [ -f "$TASKS" ]; then
@@ -127,8 +127,9 @@ fi
 # Add vLLM specific arguments.
 export OMP_NUM_THREADS=$(( 8 * $GPUS_PER_NODE ))
 export VLLM_WORKER_MULTIPROC_METHOD=spawn
+export VLLM_DISABLE_COMPILE_CACHE=1
 VLLM_MEMORY_FRACTION=0.75
-COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,data_parallel_size=$DP,tensor_parallel_size=$MP,gpu_memory_utilization=$VLLM_MEMORY_FRACTION,max_length=$MAX_LENGTH,enable_thinking=False"
+COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,data_parallel_size=$DP,tensor_parallel_size=$MP,gpu_memory_utilization=$VLLM_MEMORY_FRACTION,max_length=$MAX_LENGTH,enable_thinking=False,enforce_eager=True"
 
 HARNESS_EVAL_DIR=$HARNESS_DIR/eval_$(date +%Y%m%d_%H%M%S)_$SLURM_JOBID
 
@@ -137,7 +138,7 @@ COMMON_EVAL_ARGS=(
 	--batch_size $BS
 	--tasks $TASKS
 	--output $HARNESS_EVAL_DIR
-	--max_batch_size 128
+	--max_batch_size 32
 	--model vllm
 	--log_samples
 	--write_out
@@ -146,6 +147,7 @@ COMMON_EVAL_ARGS=(
 
 if [[ $APPLY_CHAT_TEMPLATE = true ]]; then
 	COMMON_EVAL_ARGS+=(--apply_chat_template)
+	COMMON_EVAL_ARGS+=(--fewshot_as_multiturn)
 fi
 
 if [[ -n ${LIMIT} ]]; then
