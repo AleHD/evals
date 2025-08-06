@@ -1,20 +1,24 @@
 #!/bin/bash
 
 # launch_all_evaluations.sh - Launch all evaluation scripts
-# This script runs all the evaluation scripts with optional multilingual support
+# Usage: bash examples/alignment/launch_all_evaluations.sh [--multilingual]
+
+# Check for multilingual flag
+MULTILINGUAL=${MULTILINGUAL:-false}
+if [[ "$1" == "--multilingual" ]]; then
+    MULTILINGUAL=true
+fi
 
 echo "🚀 Launching all evaluation scripts..."
 echo "======================================"
 
 # Set default environment variables
 export WANDB_ENTITY=${WANDB_ENTITY:-apertus}
-export WANDB_PROJECT=${WANDB_PROJECT:-swissai-evals-v0.0.7-debug-refactor}
+export WANDB_PROJECT=${WANDB_PROJECT:-swissai-evals-v0.0.8}
 export TASKS=${TASKS:-./configs/alignment/tasks_english.txt}
 export TABLE_METRICS=${TABLE_METRICS:-./configs/alignment/tasks_english_main_table.txt}
 
 # Check if multilingual flag is set
-MULTILINGUAL=${MULTILINGUAL:-false}
-
 if [ "$MULTILINGUAL" = "true" ]; then
     echo "🌍 Multilingual mode enabled"
     # Set multilingual-specific configurations
