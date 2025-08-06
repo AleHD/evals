@@ -33,6 +33,3 @@ for MODEL in "${!MODEL_CHECKPOINTS[@]}"; do
     # Add a small delay between submissions to avoid overwhelming the scheduler
     sleep 1
 done
-
-echo ""
-echo "All evaluation jobs submitted successfully!"
