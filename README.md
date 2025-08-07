@@ -120,11 +120,6 @@ Examples:
 
 More information on the task hierarchy refer to https://github.com/swiss-ai/lm-evaluation-harness/tree/main/lm_eval/tasks/swissai_eval.
 
-## About `evaluate_hf.sbatch`
-This file is here to keep things self contained, it will work great with the `Dockerfile` and `env.toml ` specified in the `containers` folder, only for huggingface models though. Use this to ensure stable HF evals if the other `evaluate.sbatch` fails. Supports `vllm`.
-```bash
-TASKS=configs/tasks_alignment.txt bash examples/eval_apertus_8b_hf.sh
-```
 ## About VLLM
 
 By default, vllm is enabled by default for faster inference.
@@ -135,3 +130,9 @@ To recover the old behaviour using transformers inference, you can run `export B
 > Make sure  you only compare results of such tasks when all models use the same backend.
 > Results of likelihood tasks (e.g. hellaswag) may also change when switching inference engines, but not as much.
 > Currently, all generation tasks in the [main dashboard](https://wandb.ai/epflmlo-epfl/swissai-eval-main-v1.6) are evaluated with VLLM.
+
+## About `evaluate_hf.sbatch`
+This file is here to keep things self contained, it will work great with the `Dockerfile` and `env.toml ` specified in the `containers` folder, only for huggingface models though. Use this to ensure stable HF evals if the other `evaluate.sbatch` fails. Supports `vllm`.
+```bash
+TASKS=configs/alignment/tasks_english.txt bash examples/eval_apertus_8b_hf.sh
+```
