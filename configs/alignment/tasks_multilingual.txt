@@ -2,6 +2,5 @@ global_mmlu
 truthfulqa_multilingual
 mgsm_cot_native
 hellaswag_multilingual
-include_base_44
 blend
-multijail
+cultural_bench

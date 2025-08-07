@@ -1,10 +1,8 @@
-mmlu_multilingual/acc
+global_mmlu/acc
+truthfulqa_multilingual_mc2/acc
+mgsm_native_cot_en/exact_match
 hellaswag_multilingual/acc
-arc_challenge_multilingual/acc
-winogrande_multilingual/acc
-truthfulqa_multilingual/acc
-gsm8k_multilingual/exact_match
-humaneval_multilingual/pass@1
-mbpp_multilingual/pass_at_1
-toxigen_multilingual/acc
-bbq_multilingual/acc
+include_base_44/acc
+blend/acc
+cultural_bench/acc
+multijail/score
