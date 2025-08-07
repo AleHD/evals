@@ -25,7 +25,7 @@ def get_log(infos: List[dict], tasks_cfg: dict) -> Dict[str, float]:
     log = collections.defaultdict(dict)
     for dataname, details in results.items():
         for metricname, val in details.items():
-            if metricname == "alias" or val == "N/A":
+            if metricname == "alias" or val in ["N/A", " "]:
                 continue
             assert isinstance(val, float), val
             metricname, _ = metricname.split(",")  # for some reason it is always acc,none so we remove the none.
@@ -112,7 +112,7 @@ def main(logs_root: Path, name: Optional[str], it: Optional[int],
                             print(sorted(set(history[consumed_tokens]) - set(log)))
                             print("Important! wandb log at current iteration already found, but differs. Updating")
                             run.log(log)
-                            print("Logged sucessful:", sublog)
+                            print("Update sucessful:", sublog)
                     else:
                         run.log(log)
                         print("Logged sucessful:", sublog)
