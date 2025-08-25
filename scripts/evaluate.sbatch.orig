@@ -59,8 +59,12 @@ BOS=${BOS:-false}
 LOGS_ROOT=${LOGS_ROOT:-$SCRATCH/eval-logs}
 TASKS=${TASKS:-swissai_eval}
 TRANSFORMERS_BRANCH=${TRANSFORMERS_BRANCH:-aimv2-fix}
-HARNESS_BRANCH=${HARNESS_BRANCH:-04b17502cac5e6eef4f95ee5083e4abb27486f59}
+HARNESS_BRANCH=${HARNESS_BRANCH:-main}
+<<<<<<< HEAD
 EXTRA_PIPS=${EXTRA_PIPS:-""}
+=======
+EXTRA_PIPS=${EXTRA_PIPS:-"datasets==4.0.0"}
+>>>>>>> main
 BACKEND=${BACKEND:-vllm}
 VLLM_MEMORY=${VLLM_MEMORY:-0.75}
 export HF_HOME=${HF_HOME:-/capstor/store/cscs/swissai/infra01/hf_home/}
@@ -274,6 +278,10 @@ COMMON_EVAL_ARGS+=(
 	--log_samples
 	--write_out
 )
+<<<<<<< HEAD
+COMMON_EVAL_ARGS="${COMMON_EVAL_ARGS[@]}"
+COMMON_EVAL_ARGS="$COMMON_EVAL_ARGS --tasks=\"$TASKS\""
+=======
 
 if [[ $APPLY_CHAT_TEMPLATE = true ]]; then
 	COMMON_EVAL_ARGS+=(--apply_chat_template)
@@ -287,9 +295,7 @@ if [[ ! -z $MAX_GEN_TOKENS ]]; then
 	COMMON_EVAL_ARGS+=(--gen_kwargs max_gen_toks=$MAX_GEN_TOKENS)
 fi
 
-COMMON_EVAL_ARGS="${COMMON_EVAL_ARGS[@]}"
-COMMON_EVAL_ARGS="$COMMON_EVAL_ARGS --tasks=\"$TASKS\""
-
+>>>>>>> main
 if [[ $DP -eq 1 ]]; then  # Only use model parallel.
 	export WORLD_SIZE=1
 	CMD="lm_eval --model_args=$COMMON_MODEL_ARGS $COMMON_EVAL_ARGS"

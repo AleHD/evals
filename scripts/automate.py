@@ -58,7 +58,7 @@ def get_evaluated(model: str) -> dict[int, list[str]]:
 def get_available(model_dirs: list[Path]) -> list[int]:
     available = []
     for model_dir in model_dirs:
-        for path in filter(lambda path: path.suffix == "", Path(model_dir).iterdir()):
+        for path in filter(Path.is_dir, Path(model_dir).iterdir()):
             available.append(int(re.match("^iter_([0-9]+)$", path.name).group(1)))
     return available
 
