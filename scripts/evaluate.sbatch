@@ -59,13 +59,14 @@ BOS=${BOS:-false}
 LOGS_ROOT=${LOGS_ROOT:-$SCRATCH/eval-logs}
 TASKS=${TASKS:-swissai_eval}
 TRANSFORMERS_BRANCH=${TRANSFORMERS_BRANCH:-aimv2-fix}
-HARNESS_BRANCH=${HARNESS_BRANCH:-04b17502cac5e6eef4f95ee5083e4abb27486f59}
+HARNESS_BRANCH=${HARNESS_BRANCH:-old-hellaswag}
 EXTRA_PIPS=${EXTRA_PIPS:-""}
 BACKEND=${BACKEND:-vllm}
 VLLM_MEMORY=${VLLM_MEMORY:-0.75}
 export HF_HOME=${HF_HOME:-/capstor/store/cscs/swissai/infra01/hf_home/}
 GPUS_PER_NODE=4
 APPLY_CHAT_TEMPLATE=${APPLY_CHAT_TEMPLATE:-false}
+ATTN=${ATTN:-flash_attention_2}
 
 # optional eval arguments
 MAX_LENGTH=${MAX_LENGTH:-""}
@@ -250,14 +251,15 @@ if [[ ! -z $MAX_LENGTH ]]; then
 fi
 
 if [[ $BACKEND = hf ]]; then
-	COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,attn_implementation=flash_attention_2"
+	COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,attn_implementation=$ATTN"
 	if [[ $DP -eq 1 ]]; then
 		COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,parallelize=True"
 	fi
 	COMMON_EVAL_ARGS=(--trust_remote_code)
 else  # vllm
 	COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,data_parallel_size=$DP,tensor_parallel_size=$MP,gpu_memory_utilization=$VLLM_MEMORY"
-	COMMON_EVAL_ARGS=(--confirm_run_unsafe_code)
+	#COMMON_EVAL_ARGS=(--confirm_run_unsafe_code)
+	COMMON_EVAL_ARGS=(--trust_remote_code)
 fi
 
 if [[ $BOS = true ]]; then

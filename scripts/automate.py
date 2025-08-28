@@ -10,6 +10,7 @@ Make sure to export your WANDB_API_KEY and LOGS_ROOT.
 """
 from __future__ import annotations
 
+import argparse
 import collections
 import re
 import os
@@ -21,6 +22,9 @@ from pathlib import Path
 
 from evals.tasks import Task, get_all_tasks, get_partition
 
+
+def get_max_samples(size: int) -> int:
+    return max(filter(lambda t: int(t[0]) <= size, CFG["max_samples"].items()), key=lambda t: int(t[0]))[1]
 
 def get_running(as_jobname: bool = False) -> dict[str, dict[int, list[str]] | list[str]]:
     proc = subprocess.run(["squeue", "--me", '--format="%j"', "--noheader"],
@@ -63,10 +67,13 @@ def get_available(model_dirs: list[Path]) -> list[int]:
     return available
 
 
-def submit(name: str, model: dict, it: int, tasks: list[Task]):
+def submit(name: str, model: dict, it: int, tasks: list[Task],
+           model_path: str, extra_env: dict[str, str] = {}):
+
     # Get partition of tasks.
     total_size = sum(task.size for task in ALL_TASKS)
-    n_def_shards = math.ceil(total_size/model["max_samples"])
+    max_samples = get_max_samples(model.get("size", 1))
+    n_def_shards = math.ceil(total_size/max_samples)
     default_partition = get_partition(tasks=ALL_TASKS, shards=n_def_shards)
 
     # Check all parts of the default partition, if any of them is 
@@ -80,14 +87,12 @@ def submit(name: str, model: dict, it: int, tasks: list[Task]):
     # For all remaining tasks that don't match perfectly a default part,
     # create a "mixed" job submission.
     total_size = sum(task.size for task in tasks)
-    n_shards = math.ceil(total_size/model["max_samples"])
+    n_shards = math.ceil(total_size/max_samples)
     partition = get_partition(tasks=tasks, shards=n_shards)
     for part in partition:
         shards_to_launch.append(("mixed", part))
 
     # Schedule all tasks requested.
-    path, = (model_dir for model_dir in model["model_dirs"]
-             if Path(f"{model_dir}/iter_{it:07d}").exists())
     for shard_i_or_mixed, tasks_to_launch in shards_to_launch:
         if shard_i_or_mixed == "mixed":
             jobname = "mixed"
@@ -95,26 +100,38 @@ def submit(name: str, model: dict, it: int, tasks: list[Task]):
             jobname = f"shard{shard_i_or_mixed}of{n_def_shards}"
         jobname = f"eval_{name}_{jobname}_{it}"
 
-        cmd = ["sbatch", f"--job-name={jobname}", "scripts/evaluate.sbatch", str(path),
+        cmd = ["sbatch", f"--job-name={jobname}", "scripts/evaluate.sbatch", model_path,
                str(it), model["tokens_per_iter"], name] 
         env = {**os.environ,
                "LOGS_ROOT": CFG["logs_root"],
-               "TOKENIZER": "alehc/swissai-tokenizer",
-               "BOS": "true",
-               "SIZE": str(model["size"]),
-               "HF_TEMP_DIR": CFG["hf_temp_dir"],
+               "SIZE": str(model.get("size", 1)),
                "TASKS": ",".join(task.name for task in tasks_to_launch)}
-        env.update(CFG["extra_env"])
-        print("Launching", jobname)
+        env.update(extra_env)
+        maybe_show = [task.name for task in tasks_to_launch]
+        if len(maybe_show) > 32 or "mixed" not in jobname:
+            maybe_show = ""
+        print("Launching", jobname, maybe_show)
         subprocess.run(cmd, env=env, stdout=subprocess.PIPE)
 
 
-def submit_needed():
+def submit_needed(force_tasks: list[str]):
+    def get_missing(it: int) -> list[Task]:
+        handled = status.get(it, [])
+        missing = []
+        for task in ALL_TASKS:
+            if len(task.alias) > 0 and any(actual_name not in handled for actual_name in task.alias):
+                missing.append(task)
+            elif len(task.alias) == 0 and task.name not in handled:
+                missing.append(task)
+            elif task.name in force_tasks:
+                missing.append(task)
+        return missing
+
     running = get_running()
     for name, model in CFG["models"].items():
         total_size = sum(task.size for task in ALL_TASKS)
-        n_shards = math.ceil(total_size/model["max_samples"])
-        default_partition = get_partition(tasks=ALL_TASKS, shards=n_shards)
+        max_samples = get_max_samples(model.get("size", 1))
+        n_shards = math.ceil(total_size/max_samples)
 
         # Get tasks alredy evaluated (reading them from the `results.json`).
         status = get_evaluated(name)
@@ -129,6 +146,7 @@ def submit_needed():
                     actual_tasks = ALL_TASKS
                 else:
                     shard_i, total_shards = re.match("^shard([0-9]+)of([0-9]+)$", group).groups()
+                    print(group)
                     assert int(total_shards) == n_shards
                     actual_tasks = default_partition[int(shard_i)]
 
@@ -141,19 +159,30 @@ def submit_needed():
                 else:
                     status[it] = expected_names
 
-        available = get_available(model["model_dirs"])
-        for it in available:
-            if (it - model["start_eval_from"]) % model["frequency"] == 0 and it >= model["start_eval_from"]:
+        if "model_dirs" in model:  # Megatron checkpoints where iterations are taken on the fly.
+            available = get_available(model["model_dirs"])
+            for it in available:
+                if (it - model["start_eval_from"]) % model["frequency"] == 0 and it >= model["start_eval_from"] or it in model.get("force_iters", []):
+                    missing = get_missing(it)
+                    if len(missing) > 0:
+                        paths = [model_dir for model_dir in model["model_dirs"]
+                                 if Path(f"{model_dir}/iter_{it:07d}").exists()]
+                        if len(paths) != 1:
+                            raise ValueError(f"Model {name} has {len(paths)} paths for iter {it} (should be =1): {paths}")
+                        path, = paths
+                        extra_env = {"EXTRA_PIPS": "nvidia-modelopt==0.27.0", "TOKENIZER": "alehc/swissai-tokenizer",
+                                     "BOS": "true", "HF_TEMP_DIR": CFG["hf_temp_dir"]}
+                        submit(name, model, it, missing, str(path), extra_env)
+        else:  # Huggingface checkpoints.
+            for i in range(len(model["iters"])):
+                extra = model.get("extra_env", {})
+                it = model["iters"][i]
+                if "revisions" in model and model["revisions"][i] is not None:
+                    extra["REVISION"] = model["revisions"][i]
                 # Determine missing set.
-                missing = []
-                handled = status.get(it, [])
-                for task in ALL_TASKS:
-                    if len(task.alias) > 0 and any(actual_name not in handled for actual_name in task.alias):
-                        missing.append(task)
-                    elif len(task.alias) == 0 and task.name not in handled:
-                        missing.append(task)
+                missing = get_missing(it)
                 if len(missing) > 0:
-                    submit(name, model, it, missing)
+                    submit(name, model, it, missing, model["name"], extra)
 
 
 def update_hf_checkpoints():
@@ -197,20 +226,26 @@ def sync_wandb():
            "WANDB_RESUME": "allow",
            "WANDB_ENTITY": CFG["wandb_entity"],
            "WANDB_PROJECT": CFG["wandb_project"]}
-    cmd = ["python3", "scripts/update_wandb.py", str(CFG["logs_root"])]
-    for name in CFG["models"]:
-        subprocess.run(cmd + [f"--name={name}"], env=env)
+    cmd = ["python3", "scripts/update_wandb.py", str(CFG["logs_root"]), "--names"]
+    cmd += sorted(CFG["models"])
+    subprocess.run(cmd, env=env)
 
 
-def main():
-    submit_needed()
-    update_hf_checkpoints()
-    cleanup_hf_checkpoints()
-    sync_wandb()
+def main(force_tasks: list[str]):
+    submit_needed(force_tasks)
+    #update_hf_checkpoints()
+    #cleanup_hf_checkpoints()
+    #sync_wandb()
 
 
 if __name__ == "__main__":
+    # Argparse.
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--force-tasks", nargs="*", default=[])
+    args = parser.parse_args()
+    
+    # Get general config and launch.
     ALL_TASKS = get_all_tasks()
     with open("configs/automation.json") as f:
         CFG = json.load(f)
-    main()
+    main(**vars(args))
