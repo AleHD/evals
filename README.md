@@ -135,3 +135,24 @@ To recover the old behaviour using transformers inference, you can run `export B
 > Make sure  you only compare results of such tasks when all models use the same backend.
 > Results of likelihood tasks (e.g. hellaswag) may also change when switching inference engines, but not as much.
 > Currently, all generation tasks in the [main dashboard](https://wandb.ai/epflmlo-epfl/swissai-eval-main-v1.6) are evaluated with VLLM.
+
+## Using `scripts/automate.py`
+
+The easiest way to evaluate many models is to use the `scripts/automate.py` script.
+This will perform the following:
+1. Look for the automation configuration file (`configs/automation.json` by default, specify a different one with `--config-path`) to get the general settings (e.g. evaluation logsroot, HF home, etc) and the list of models to evaluate.
+2. It will then request `src/evals/tasks.py:get_all_tasks` for a list of tasks to evaluate.
+  This list is inferred from `configs/all_tasks.json`.
+3. For all models specified in `configs/automation.json`, it will attempt to locate the set of tasks that have been already evaluated by looking at the `logs_root`.
+4. If there are tasks obtained in step 2 that haven't been evalauted by a model, it will launch (one or more) job(s) with all missing tasks using `scripts/evaluate.sh`.
+5. If the script was launched with `--sync`, it will also sync the wandb project in the end.
+
+Make sure you run this script with `HF_TOKEN` and `WANDB_API_KEY` defined.
+You will also need a few not-so-common python dependencies like `iso639-lang` and `prtpy` (check the `pyproject.toml`), which can be easily resolved by using `uv`.
+
+IMPORTANT!
+If you want to run newer models not compatible with the default version of vllm, you can specify the `--use-official-vllm` flag.
+For instance, the fp8-quantized Apertus can be evaluated running
+```
+uv run scripts/automate.py --use-official-vllm --config-path=configs/automation-fp8.json
+```
