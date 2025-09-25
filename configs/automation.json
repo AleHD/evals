@@ -9,7 +9,10 @@
 		"1": 100000000,
 		"8": 10000000,
 		"60": 500000,
-		"300": 250000
+		"300": 250000,
+		"500": 100000,
+		"600": 50000,
+		"1000": 10000
 	},
 	"models": {
 		"Apertus-8B": {
@@ -104,38 +107,49 @@
 		},
 
 		"Apertus-8B-Aligned": {
-			"name": "/iopsstor/scratch/cscs/atarun/projects/swiss-alignment/artifacts/private/outputs/train_preference/apertus-8b-final/swissai_olmo2_newCompletions_v2+prism_v2+polyglot_v2+olmo_loaded-merged-8b-Npairs1-qrpo-ademamix-r5e-07-beta5.0/checkpoints/2c7b9dacb8b928c7/checkpoint-744",
+			"name": "/iopsstor/scratch/cscs/ahernnde/ckpt-mirrors/Aligned-8B",
 			"tokens_per_iter": "15361030225920",
 			"iters": [1]
 		},
 		"Apertus-70B-Aligned": {
-			"name": "/iopsstor/scratch/cscs/atarun/projects/swiss-alignment/dev/artifacts/private/outputs/train_preference/apertus-70b-final/swissai_olmo2_newCompletions_v2+prism_v2+polyglot_v2+olmo_loaded-merged-70b-Npairs1-qrpo-ademamix-r1e-07-beta5.0/checkpoints/7c67c6319fc4b333/checkpoint-740",
+			"name": "/iopsstor/scratch/cscs/ahernnde/ckpt-mirrors/Aligned-70B",
 			"tokens_per_iter": "15346434048000",
 			"iters": [1],
+			"size": 70,
+			"extra_env": {"VLLM_DISABLE_COMPILE_CACHE": "1"}
+		},
+
+		"SmolLM3-3B": { 
+			"name": "HuggingFaceTB/SmolLM3-3B-checkpoints",
+			"tokens_per_iter": "2359296",
+			"iters": [1000000, 1400000, 2000000, 2400000, 3000000, 3400000, 4000000, 4400000, 4720000],
+			"revisions": ["stage1-step-1000000", "stage1-step-1400000", "stage1-step-2000000", "stage1-step-2400000", "stage1-step-3000000", "stage1-step-3400000", "stage2-step-4000000", "stage3-step-4400000", "stage3-step-4720000"],
+			"extra_env": { "BACKEND": "hf", "TRANSFORMERS_BRANCH": "model/apertus+aimv2-fix" },
 			"size": 70
+		},
+
+		"Apertus-70B-sft4honesty-test": {
+			"name": "/iopsstor/scratch/cscs/ahernnde/ckpt-mirrors/Apertus-sft4honesty-70B",
+			"tokens_per_iter": "15346434048000",
+			"iters": [1],
+			"size": 1000,
+			"extra_env": {"VLLM_DISABLE_COMPILE_CACHE": "1"}
 		},
 
 		"Llama3.1-8B": { "name": "meta-llama/Meta-Llama-3.1-8B", "tokens_per_iter": "15000000000000", "iters": [1] },
 		"Llama3.1-8B-Instruct": { "name": "meta-llama/Meta-Llama-3.1-8B-Instruct", "tokens_per_iter": "15000000000000", "iters": [1] },
 		"Llama3.1-70B": { "name": "meta-llama/Meta-Llama-3.1-70B", "tokens_per_iter": "15000000000000", "iters": [1], "size": 70 },
+		"Llama3.1-70B-Instruct": { "name": "meta-llama/Meta-Llama-3.1-70B-Instruct", "tokens_per_iter": "15000000000000", "iters": [1], "size": 70,
+		                         "extra_env": {"VLLM_DISABLE_COMPILE_CACHE": "1" } },
 		"Llama3.3-70B-Instruct": { "name": "meta-llama/Llama-3.3-70B-Instruct", "tokens_per_iter": "15000000000000", "iters": [1], "size": 70 },
 
 		"Llama4-16x17B": {
 			"name": "meta-llama/Llama-4-Scout-17B-16E",
 			"tokens_per_iter": "40000000000000",
 			"iters": [1],
-			"size": 300,
-			"extra_env": {"BACKEND": "hf"}
+			"size": 600,
+			"extra_env": {"BACKEND": "hf", "BS": "auto"}
 		},
-
-		"Llama4-128x17B": {
-			"name": "meta-llama/Llama-4-Maverick-17B-128E",
-			"tokens_per_iter": "22000000000000",
-			"iters": [1],
-			"size": 300,
-			"extra_env": {"BACKEND": "hf"}
-		},
-
 
 		"SmolLM2-1.7B": {
 			"name": "HuggingFaceTB/SmolLM2-1.7B-intermediate-checkpoints",
@@ -143,7 +157,6 @@
 			"iters": [125000, 1000000, 2000000, 3000000, 4000000, 5000000],
 			"revisions": ["step-125000", "step-1000000", "step-2000000", "step-3000000", "step-4000000", "step-5000000"]
 		},
-		"SmolLM3-3B": { "name": "HuggingFaceTB/SmolLM3-3B-Base", "tokens_per_iter": "2359296", "iters": [4720000] },
 		"SmolLM3-3B-Instruct": { "name": "HuggingFaceTB/SmolLM3-3B", "tokens_per_iter": "2359296", "iters": [4720000] },
 
 		"Qwen2.5-7B": { "name": "Qwen/Qwen2.5-7B", "tokens_per_iter": "18000000000000", "iters": [1] },
@@ -191,7 +204,7 @@
 
 		"Teuken-7B-Instruct": { "name": "openGPT-X/Teuken-7B-instruct-v0.6", "tokens_per_iter": "6000000000000", "iters": [1],
 		                      "extra_env": {"VLLM_MEMORY": "0.5"} },
-		"ALIA-40B": { "name": "BSC-LT/ALIA-40b", "tokens_per_iter": "9370000000000", "iters": [1], "size": 40,
+		"ALIA-40B": { "name": "BSC-LT/ALIA-40b", "tokens_per_iter": "9370000000000", "iters": [1], "size": 300,
 		            "extra_env": {"VLLM_MEMORY": "0.5"} },
 		"Salamandra-7B-Instruct": { "name": "BSC-LT/salamandra-7b-instruct", "tokens_per_iter": "12875000000000", "iters": [1],
 		            "extra_env": {"VLLM_MEMORY": "0.5"} },
@@ -209,14 +222,6 @@
 			"iters": [1],
 			"size": 200,
 			"extra_env": {"TRANSFORMERS_BRANCH": "v4.55.0+aimv2fix", "BACKEND": "hf", "ATTN": "eager"}
-		},
-		"GPTOSS-120B": {
-			"name": "openai/gpt-oss-120b",
-			"tokens_per_iter": "1",
-			"iters": [1],
-			"size": 300,
-			"extra_env": {"TRANSFORMERS_BRANCH": "v4.55.0+aimv2fix", "BACKEND": "hf", "ATTN": "eager"}
 		}
-
 	 }
 }

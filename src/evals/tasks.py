@@ -160,6 +160,7 @@ def get_all_tasks(all_tasks_json: Path = Path("configs/all_tasks.json")) -> list
             dimension=row.get("dimension"),
             alias=tuple(row.get("alias", ())),
         ))
+
     return tasks
 
 

@@ -2,14 +2,13 @@
 #SBATCH --account=a-infra01-1
 #SBATCH --cpus-per-task=288
 #SBATCH --gres=gpu:4
-#SBATCH --environment=./containers/env.toml
 #SBATCH --job-name=evaluation
 #SBATCH --mem=460000
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --output=logs/%x_%j.out
 #SBATCH --error=logs/%x_%j.err
-#SBATCH --time=11:59:00
+#SBATCH --time=12:00:00
 #SBATCH --exclusive
 
 # Aux functions.
@@ -64,9 +63,15 @@ EXTRA_PIPS=${EXTRA_PIPS:-""}
 BACKEND=${BACKEND:-vllm}
 VLLM_MEMORY=${VLLM_MEMORY:-0.75}
 export HF_HOME=${HF_HOME:-/capstor/store/cscs/swissai/infra01/hf_home/}
+HARNESS_FORK=${HARNESS_FORK:-https://github.com/swiss-ai/lm-evaluation-harness.git}
 GPUS_PER_NODE=4
 APPLY_CHAT_TEMPLATE=${APPLY_CHAT_TEMPLATE:-false}
 ATTN=${ATTN:-flash_attention_2}
+LOG_SAMPLES=${LOG_SAMPLES:-true}
+DTYPE=${DTYPE:-bfloat16}
+
+export CUDA_LAUNCH_BLOCKING=1
+export WANDB_API_KEY=75d369226243ac969820537ebde50dacbe4f57c7
 
 # optional eval arguments
 MAX_LENGTH=${MAX_LENGTH:-""}
@@ -132,20 +137,12 @@ echo "Consumed tokens for this iteration: $CONSUMED_TOKENS"
 
 # Determine model parallel based on size and check that the backend is supported.
 if [[ $BACKEND = hf ]]; then
-	if (( SIZE <= 35 )); then
-		MP=1
-		CONVERT_MP=1
-	elif (( SIZE <= 70 )); then
-		MP=2
-		CONVERT_MP=4
-	else
-		MP=4
-		CONVERT_MP=4
-	fi
-elif [[ $BACKEND = vllm ]]; then
-	export VLLM_CACHE_ROOT=$SCRATCH/.vllm-cache
 	MP=$GPUS_PER_NODE
 	CONVERT_MP=$GPUS_PER_NODE
+elif [[ $BACKEND = vllm ]]; then
+	MP=$GPUS_PER_NODE
+	CONVERT_MP=$GPUS_PER_NODE
+	export VLLM_CACHE_ROOT=$SCRATCH/.vllm-cache
 else
 	die "Unknown backend $BACKEND"
 fi
@@ -184,13 +181,15 @@ echo $SLURM_JOB_ID >> $RUN_ROOT/job_ids.txt
 # Install custom transformers and lm-harness.
 echo Installing transformers and eval harness.
 cd $TEMP_REPOS
-git clone https://github.com/swiss-ai/transformers.git
-cd transformers
-git checkout $TRANSFORMERS_BRANCH
-pip install -e .
-cd ..
+if [[ $TRANSFORMERS_BRANCH != none ]]; then
+	git clone https://github.com/swiss-ai/transformers.git
+	cd transformers
+	git checkout $TRANSFORMERS_BRANCH
+	pip install -e .
+	cd ..
+fi
 
-git clone https://github.com/swiss-ai/lm-evaluation-harness.git
+git clone $HARNESS_FORK
 cd lm-evaluation-harness
 git checkout $HARNESS_BRANCH
 pip install -e .
@@ -244,7 +243,7 @@ fi
 
 # Finally, run the actual evaluations.
 DP=$(( GPUS_PER_NODE / MP ))
-COMMON_MODEL_ARGS="pretrained=$HF_CHECKPOINT_PATH,tokenizer=$TOKENIZER$MAYBE_REVISION,dtype=bfloat16"
+COMMON_MODEL_ARGS="pretrained=$HF_CHECKPOINT_PATH,tokenizer=$TOKENIZER$MAYBE_REVISION,dtype=$DTYPE"
 
 if [[ ! -z $MAX_LENGTH ]]; then
 	COMMON_MODEL_ARGS="$COMMON_MODEL_ARGS,max_length=$MAX_LENGTH"
@@ -273,9 +272,11 @@ COMMON_EVAL_ARGS+=(
 	--max_batch_size 128
 	--cache_requests true
 	--model $BACKEND
-	--log_samples
 	--write_out
 )
+if [[ $LOG_SAMPLES = true ]]; then
+	COMMON_EVAL_ARGS+=(--log_samples)
+fi
 
 if [[ $APPLY_CHAT_TEMPLATE = true ]]; then
 	COMMON_EVAL_ARGS+=(--apply_chat_template)

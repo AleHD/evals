@@ -1,0 +1,8 @@
+image = "vllm/vllm-openai:v0.10.2"
+
+mounts = ["/capstor", "/iopsstor", "/users"]
+workdir = "/"
+
+[annotations]
+com.hooks.aws_ofi_nccl.enabled = "true"
+com.hooks.aws_ofi_nccl.variant = "cuda12"

@@ -68,7 +68,8 @@ def get_available(model_dirs: list[Path]) -> list[int]:
 
 
 def submit(name: str, model: dict, it: int, tasks: list[Task],
-           model_path: str, extra_env: dict[str, str] = {}):
+           model_path: str, extra_env: dict[str, str] = {},
+           use_official_vllm: bool = False):
 
     # Get partition of tasks.
     total_size = sum(task.size for task in ALL_TASKS)
@@ -100,13 +101,25 @@ def submit(name: str, model: dict, it: int, tasks: list[Task],
             jobname = f"shard{shard_i_or_mixed}of{n_def_shards}"
         jobname = f"eval_{name}_{jobname}_{it}"
 
-        cmd = ["sbatch", f"--job-name={jobname}", "scripts/evaluate.sbatch", model_path,
-               str(it), model["tokens_per_iter"], name] 
+        if use_official_vllm:
+            cmd = ["sbatch", "--environment=./containers/env-official.toml"]
+        else:
+            cmd = ["sbatch", "--environment=./containers/env.toml"]
+
+        cmd += [f"--job-name={jobname}", "scripts/evaluate.sbatch", model_path,
+                str(it), model["tokens_per_iter"], name] 
+
         env = {**os.environ,
                "LOGS_ROOT": CFG["logs_root"],
                "SIZE": str(model.get("size", 1)),
                "TASKS": ",".join(task.name for task in tasks_to_launch)}
         env.update(extra_env)
+        if use_official_vllm:
+            env.update({
+                "HARNESS_FORK": "https://github.com/EleutherAI/lm-evaluation-harness.git",
+                "HARNESS_BRANCH": "main"
+            })
+
         maybe_show = [task.name for task in tasks_to_launch]
         if len(maybe_show) > 32 or "mixed" not in jobname:
             maybe_show = ""
@@ -114,7 +127,7 @@ def submit(name: str, model: dict, it: int, tasks: list[Task],
         subprocess.run(cmd, env=env, stdout=subprocess.PIPE)
 
 
-def submit_needed(force_tasks: list[str]):
+def submit_needed(force_tasks: list[str], use_official_vllm: bool):
     def get_missing(it: int) -> list[Task]:
         handled = status.get(it, [])
         missing = []
@@ -146,7 +159,6 @@ def submit_needed(force_tasks: list[str]):
                     actual_tasks = ALL_TASKS
                 else:
                     shard_i, total_shards = re.match("^shard([0-9]+)of([0-9]+)$", group).groups()
-                    print(group)
                     assert int(total_shards) == n_shards
                     actual_tasks = default_partition[int(shard_i)]
 
@@ -182,7 +194,7 @@ def submit_needed(force_tasks: list[str]):
                 # Determine missing set.
                 missing = get_missing(it)
                 if len(missing) > 0:
-                    submit(name, model, it, missing, model["name"], extra)
+                    submit(name, model, it, missing, model["name"], extra, use_official_vllm)
 
 
 def update_hf_checkpoints():
@@ -231,21 +243,31 @@ def sync_wandb():
     subprocess.run(cmd, env=env)
 
 
-def main(force_tasks: list[str]):
-    submit_needed(force_tasks)
+def main(force_tasks: list[str], use_official_vllm: bool, sync: bool):
+    submit_needed(force_tasks, use_official_vllm)
     #update_hf_checkpoints()
     #cleanup_hf_checkpoints()
-    #sync_wandb()
+    if sync:
+        sync_wandb()
 
 
 if __name__ == "__main__":
     # Argparse.
     parser = argparse.ArgumentParser()
+    parser.add_argument("--config-path", type=Path, default=Path("configs/automation.json"))
     parser.add_argument("--force-tasks", nargs="*", default=[])
+    parser.add_argument("--sync", action="store_true")
+    parser.add_argument("--use-official-vllm", action="store_true")
     args = parser.parse_args()
     
     # Get general config and launch.
     ALL_TASKS = get_all_tasks()
-    with open("configs/automation.json") as f:
+    with open(args.config_path) as f:
         CFG = json.load(f)
+    del args.config_path
+
+    # Remove non-official tassks when official vllm container was requested.
+    if args.use_official_vllm:
+        noadd = ["blend", "switzerland_qa", "include_base_new_45", "cultural_bench"]
+        ALL_TASKS = list(filter(lambda task: all(no not in task.name for no in noadd), ALL_TASKS))
     main(**vars(args))
