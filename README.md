@@ -120,11 +120,6 @@ Examples:
 
 More information on the task hierarchy refer to https://github.com/swiss-ai/lm-evaluation-harness/tree/main/lm_eval/tasks/swissai_eval.
 
-## About `evaluate_hf.sbatch`
-This file is here to keep things self contained, it will work great with the `Dockerfile` and `env.toml ` specified in the `containers` folder, only for huggingface models though. Use this to ensure stable HF evals if the other `evaluate.sbatch` fails. Supports `vllm`.
-```bash
-TASKS=configs/tasks_alignment.txt bash examples/eval_apertus_8b_hf.sh
-```
 ## About VLLM
 
 By default, vllm is enabled by default for faster inference.
@@ -155,4 +150,10 @@ If you want to run newer models not compatible with the default version of vllm,
 For instance, the fp8-quantized Apertus can be evaluated running
 ```
 uv run scripts/automate.py --use-official-vllm --config-path=configs/automation-fp8.json
+```
+
+## About `evaluate_hf.sbatch`
+This file is here to keep things self contained, it will work great with the `Dockerfile` and `env.toml ` specified in the `containers` folder, only for huggingface models though. Use this to ensure stable HF evals if the other `evaluate.sbatch` fails. Supports `vllm`.
+```bash
+TASKS=configs/alignment/tasks_english.txt bash examples/eval_apertus_8b_hf.sh
 ```
