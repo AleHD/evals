@@ -11,12 +11,12 @@
 		"60": 500000
 	},
 	"models": {
-		"Apertus-1B-new": {
+		"Apertus-1B": {
 			"model_dirs": ["/capstor/store/cscs/swissai/a06/main_run_megatron/Megatron-LM/logs/Meg-Runs/main-runs-v1/apertus3-1b-21-nodes/apertus3-1b-21-nodes/checkpoints"],
 			"tokens_per_iter": "0:2039392,2472624:", "frequency": 1,
 			"start_eval_from": 2039392
 		},
-		"Apertus-1B-it2500-new": {
+		"Apertus-1B-it2500": {
 			"model_dirs": ["/capstor/store/cscs/swissai/infra01/users/ahernnde/workspace/latency/logs/v1/Apertus-1B-it2500/checkpoints/"],
 			"tokens_per_iter": "0:2039392,2472624:", "frequency": 1,
 			"start_eval_from": 2041892
