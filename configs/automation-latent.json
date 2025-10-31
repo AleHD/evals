@@ -1,0 +1,35 @@
+{
+	"logs_root": "/capstor/store/cscs/swissai/infra01/users/ahernnde/workspace/latency/eval_logs",
+	"hf_temp_dir": "/iopsstor/scratch/cscs/ahernnde/hf_temp_dir",
+	"hf_storage_dir": "/capstor/store/cscs/swissai/infra01/users/ahernnde/workspace/latency/hf_ckpts",
+	"wandb_entity": "alehc",
+	"wandb_project": "latency-eval-v1",
+	"num_hf_checkpoints_to_keep": 1,
+	"max_samples": {
+		"1": 100000000,
+		"8": 10000000,
+		"60": 500000
+	},
+	"models": {
+		"Apertus-1B-new": {
+			"model_dirs": ["/capstor/store/cscs/swissai/a06/main_run_megatron/Megatron-LM/logs/Meg-Runs/main-runs-v1/apertus3-1b-21-nodes/apertus3-1b-21-nodes/checkpoints"],
+			"tokens_per_iter": "0:2039392,2472624:", "frequency": 1,
+			"start_eval_from": 2039392
+		},
+		"Apertus-1B-it2500-new": {
+			"model_dirs": ["/capstor/store/cscs/swissai/infra01/users/ahernnde/workspace/latency/logs/v1/Apertus-1B-it2500/checkpoints/"],
+			"tokens_per_iter": "0:2039392,2472624:", "frequency": 1,
+			"start_eval_from": 2041892
+		},
+		"ETP-1B-7_4x5_5-it2500": {
+			"model_dirs": ["/capstor/store/cscs/swissai/infra01/users/ahernnde/workspace/latency/logs/v1/ETP-1B-7_4x5_5-it2500/checkpoints/"],
+			"tokens_per_iter": "0:2039392,2472624:", "frequency": 1,
+			"start_eval_from": 2041892
+		},
+		"Ping-1B-7_4x5_5-it2500-la0.3": {
+			"model_dirs": ["/capstor/store/cscs/swissai/infra01/users/ahernnde/workspace/latency/logs/v1/Ping-1B-7_4x5_5-it2500-la0.3/checkpoints/"],
+			"tokens_per_iter": "0:2039392,2472624:", "frequency": 1,
+			"start_eval_from": 2041892
+		}
+	}
+}

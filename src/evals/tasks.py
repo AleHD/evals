@@ -18,21 +18,21 @@ REQUEST_CACHE = {}
 
 class Dimension(enum.StrEnum):
     general_abilities = enum.auto()
-    factual_agnostic = enum.auto()
-    factual_regional = enum.auto()
+    factual = enum.auto()
+    reasoning = enum.auto()
 
     @classmethod
     def get(cls, name: str) -> Dimension:
         general = ["hellaswag", "piqa", "arc", "ai2_arc", "winogrande", "xwinograd", "xnli", "copa", "xcopa"]
-        agnostic = ["mmlu", "global_mmlu"]
-        regional = ["include", "switzerland_qa", "cultural_bench", "blend"]
+        factual = ["mmlu", "global_mmlu"]
+        reasoning = ["gsm8k", "aime"]
 
         if any(name.startswith(group) for group in general):
             return Dimension.general_abilities
-        if any(name.startswith(group) for group in agnostic):
-            return Dimension.factual_agnostic
-        if any(name.startswith(group) for group in regional):
-            return Dimension.factual_regional
+        if any(name.startswith(group) for group in factual):
+            return Dimension.factual
+        if any(name.startswith(group) for group in reasoning):
+            return Dimension.reasoning
         raise ValueError(f"Could not infer dimension for task {task}")
 
 
@@ -94,6 +94,8 @@ def _infer_size(name: str) -> int:
         "winogrande": ("allenai/winogrande", "winogrande_xl"),
         "ai2_arc": ("allenai/ai2_arc", None),
         "cultural_bench": ("kellycyy/CulturalBench", None),
+        "aime": ("AI-MO/aimo-validation-aime", None),
+        "gsm8k": ("openai/gsm8k", "main")
     }
 
     # Get `source` and infer language when task names have underscores.

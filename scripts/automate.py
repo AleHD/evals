@@ -62,7 +62,7 @@ def get_evaluated(model: str) -> dict[int, list[str]]:
 def get_available(model_dirs: list[Path]) -> list[int]:
     available = []
     for model_dir in model_dirs:
-        for path in filter(Path.is_dir, Path(model_dir).iterdir()):
+        for path in filter(lambda path: path.is_dir and "iter_" in path.name, Path(model_dir).iterdir()):
             available.append(int(re.match("^iter_([0-9]+)$", path.name).group(1)))
     return available
 
@@ -104,7 +104,8 @@ def submit(name: str, model: dict, it: int, tasks: list[Task],
         if use_official_vllm:
             cmd = ["sbatch", "--environment=./containers/env-official.toml"]
         else:
-            cmd = ["sbatch", "--environment=./containers/env.toml"]
+            #cmd = ["sbatch", "--environment=./containers/env.toml"]
+            cmd = ["sbatch", "--environment=/iopsstor/scratch/cscs/ahernnde/ncg_new_v2.toml"]
 
         cmd += [f"--job-name={jobname}", "scripts/evaluate.sbatch", model_path,
                 str(it), model["tokens_per_iter"], name] 
@@ -112,7 +113,8 @@ def submit(name: str, model: dict, it: int, tasks: list[Task],
         env = {**os.environ,
                "LOGS_ROOT": CFG["logs_root"],
                "SIZE": str(model.get("size", 1)),
-               "TASKS": ",".join(task.name for task in tasks_to_launch)}
+               "TASKS": ",".join(task.name for task in tasks_to_launch),
+               "BACKEND": "hf"}
         env.update(extra_env)
         if use_official_vllm:
             env.update({
@@ -245,8 +247,8 @@ def sync_wandb():
 
 def main(force_tasks: list[str], use_official_vllm: bool, sync: bool):
     submit_needed(force_tasks, use_official_vllm)
-    #update_hf_checkpoints()
-    #cleanup_hf_checkpoints()
+    update_hf_checkpoints()
+    cleanup_hf_checkpoints()
     if sync:
         sync_wandb()
 

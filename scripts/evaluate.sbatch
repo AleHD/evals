@@ -10,6 +10,8 @@
 #SBATCH --error=logs/%x_%j.err
 #SBATCH --time=12:00:00
 #SBATCH --exclusive
+#SBATCH --partition=debug
+#SBATCH --time=01:30:00
 
 # Aux functions.
 usage() {
@@ -52,12 +54,12 @@ IT=$2
 TOKENS_PER_ITER=$3
 NAME=$4
 BS=${BS:-"auto:20"}
-MEGATRON_BRANCH=${MEGATRON_BRANCH:-spawn}
+MEGATRON_PATH=${MEGATRON_PATH:-/capstor/store/cscs/swissai/infra01/users/ahernnde/workspace/latency/AleHD__Megatron-LM}
 SIZE=${SIZE:-1}
 BOS=${BOS:-false}
 LOGS_ROOT=${LOGS_ROOT:-$SCRATCH/eval-logs}
 TASKS=${TASKS:-swissai_eval}
-TRANSFORMERS_BRANCH=${TRANSFORMERS_BRANCH:-aimv2-fix}
+TRANSFORMERS_PATH=${TRANSFORMERS_PATH:-/capstor/store/cscs/swissai/infra01/users/ahernnde/workspace/latency/AleHD__transformers}
 HARNESS_BRANCH=${HARNESS_BRANCH:-old-hellaswag}
 EXTRA_PIPS=${EXTRA_PIPS:-""}
 BACKEND=${BACKEND:-vllm}
@@ -138,7 +140,7 @@ echo "Consumed tokens for this iteration: $CONSUMED_TOKENS"
 # Determine model parallel based on size and check that the backend is supported.
 if [[ $BACKEND = hf ]]; then
 	MP=$GPUS_PER_NODE
-	CONVERT_MP=$GPUS_PER_NODE
+	CONVERT_MP=1
 elif [[ $BACKEND = vllm ]]; then
 	MP=$GPUS_PER_NODE
 	CONVERT_MP=$GPUS_PER_NODE
@@ -179,16 +181,18 @@ echo $CONSUMED_TOKENS > $RUN_ROOT/consumed_tokens.txt
 echo $SLURM_JOB_ID >> $RUN_ROOT/job_ids.txt
 
 # Install custom transformers and lm-harness.
-echo Installing transformers and eval harness.
-cd $TEMP_REPOS
-if [[ $TRANSFORMERS_BRANCH != none ]]; then
-	git clone https://github.com/swiss-ai/transformers.git
-	cd transformers
-	git checkout $TRANSFORMERS_BRANCH
-	pip install -e .
-	cd ..
-fi
+#echo Installing transformers and eval harness.
+#cd $TEMP_REPOS
+#if [[ $TRANSFORMERS_BRANCH != none ]]; then
+#	git clone https://github.com/swiss-ai/transformers.git
+#	cd transformers
+#	git checkout $TRANSFORMERS_BRANCH
+#	pip install -e .
+#fi
+cd $TRANSFORMERS_PATH
+pip install -e .
 
+cd $TEMP_REPOS
 git clone $HARNESS_FORK
 cd lm-evaluation-harness
 git checkout $HARNESS_BRANCH
@@ -198,15 +202,15 @@ if [[ $EXTRA_PIPS != "" ]]; then
 	pip install $EXTRA_PIPS --no-build-isolation
 fi
 
-
 # Convert to HF if needed or pre-download the HF model.
 if [[ $IS_MEGATRON = true ]]; then
 	# Clone megatron.
-	echo Clonning megatron.
-	cd $TEMP_REPOS
-	git clone https://github.com/swiss-ai/Megatron-LM.git
-	cd Megatron-LM
-	git checkout $MEGATRON_BRANCH
+	#echo Clonning megatron.
+	#cd $TEMP_REPOS
+	#git clone https://github.com/swiss-ai/Megatron-LM.git
+	#cd Megatron-LM
+	#git checkout $MEGATRON_BRANCH
+	cd $MEGATRON_PATH
 
 	echo "Converting megatron checkpoint to huggingface!"
 	echo "Running torchdist->torch"
@@ -227,17 +231,17 @@ if [[ $IS_MEGATRON = true ]]; then
 		--save-dir=$HF_TEMP_PATH \
 		--hf-tokenizer=$TOKENIZER
 	HF_CHECKPOINT_PATH=$HF_TEMP_PATH
-	huggingface-cli download $TOKENIZER
+	hf download $TOKENIZER
 else
 	HF_CHECKPOINT_PATH=$MODEL
 	if [[ -d $MODEL ]]; then
 		echo "$MODEL is a local directory, skipping download."
 	else
-		huggingface-cli download $MODEL $MAYBE_DOWNLOAD_REVISION
+		hf download $MODEL $MAYBE_DOWNLOAD_REVISION
 	fi
 	if [[ $TOKENIZER != $MODEL ]]; then
 		echo "Why are you using a different tokenizer and model? TOKENIZER=$TOKENIZER, MODEL=$MODEL"
-		huggingface-cli download $TOKENIZER
+		hf download $TOKENIZER
 	fi
 fi
 

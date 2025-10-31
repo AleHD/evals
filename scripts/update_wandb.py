@@ -122,7 +122,8 @@ def get_log(infos: List[dict], tasks_cfg: dict, all_tasks: list[Task]) -> dict[s
     for dim in all_dims:
         tasks_to_agg = [task.name for task in all_tasks
                         if task.dimension == dim]
-        agg(log, f"All Dimensions/{pretty_dim(dim)}", list(tasks_to_agg), micro=False, metrics=["acc"])
+        metrics = ["exact_match"] if dim == "reasoning" else ["acc"] 
+        agg(log, f"All Dimensions/{pretty_dim(dim)}", list(tasks_to_agg), micro=False, metrics=metrics)
 
     # Aggregate {dimension}.{language_group}.macro.
     for lang_group_name, langs in tasks_cfg["language_groups"].items():
@@ -175,6 +176,7 @@ def main(logs_root: Path, names: list[str], it: Optional[int], cfg: Path):
 
     for lang_group in tasks_cfg["language_groups"].values():
         for lang in lang_group:
+            print(lang)
             assert lang in all_languages
 
     tasks_cfg["language_groups"]["global"] = list(all_languages)
